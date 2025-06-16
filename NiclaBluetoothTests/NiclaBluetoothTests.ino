@@ -32,6 +32,8 @@ const unsigned long SENSOR_UPDATE_PERIOD = 1 * 1000; // 1 seecond
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 
+SensorBSEC bsec(SENSOR_ID_BSEC);
+
 
 #define ledPin LED_BUILTIN
 
@@ -44,9 +46,10 @@ void setup() {
 
   while (!Serial);
 
-  // BHY2.begin();
-  // temperature.begin();
-  // quaternion.begin();
+  BHY2.begin();
+  temperature.begin();
+  quaternion.begin();
+  bsec.begin();
 
 
   // set LED pin to output mode
@@ -86,6 +89,8 @@ void setup() {
 
   Serial.println("Setup Completed");
 
+  updateSensors();
+
 }
 
 void updateSensors()
@@ -94,24 +99,21 @@ void updateSensors()
 
   state.temp = temperature.value();
 
+  state.humidity = bsec.comp_h();
+
   state.qx = quaternion.x();
-  state.qx = quaternion.y();
-  state.qx = quaternion.z();
-  state.qx = quaternion.w();
+  state.qy = quaternion.y();
+  state.qz = quaternion.z();
+  state.qw = quaternion.w();
 
   last_update = millis();
 
   eggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
+
+  Serial.println("Updated Sensors");
 }
 
 void loop() {
-
-  // digitalWrite(ledPin, HIGH);
-  // delay(500);
-  // digitalWrite(ledPin, LOW);
-  // delay(500);
-  // return;
-
   // listen for Bluetooth® Low Energy peripherals to connect:
 
   BLEDevice central = BLE.central();

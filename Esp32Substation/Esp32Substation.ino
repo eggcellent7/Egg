@@ -25,8 +25,11 @@ void printEggState(EggState* state)
 {
   Serial.println("Egg State:");
 
-  Serial.print("Temperature:");
-  Serial.println(state->temp);
+  Serial.printf("Temperature: %f\n", state->temp);
+  Serial.printf("Humidity: %f\n", state->humidity);
+
+  Serial.printf("Rotation: x %f, y: %f, z: %f, w %f\n", 
+    state->qx, state->qy, state->qz, state->qw);
 }
 
 void setup() {
@@ -45,20 +48,15 @@ void setup() {
 
   Serial.println("Scan start");
 
-  NimBLEScanResults results = pScan->getResults(10 * 1000);
+  NimBLEScanResults results = pScan->getResults(5 * 1000);
 
   NimBLEUUID serviceUuid(SERVICE_UUID);
-
-  Serial.println("Scan End: Reading results");
  
   for (int i = 0; i < results.getCount(); i++) {
-    Serial.println("Got the device");
       const NimBLEAdvertisedDevice *device = results.getDevice(i);
       
       if (device->isAdvertisingService(serviceUuid)) {
         NimBLEClient *pClient = NimBLEDevice::createClient();
-
-        Serial.println("Got the device!!!!");
 
         if (!pClient) { // Make sure the client was created
         Serial.println("Failed to create client");
@@ -85,18 +83,14 @@ void setup() {
         if (pCharacteristic != nullptr) {
             NimBLEAttValue value = pCharacteristic->readValue();
 
-            EggState state = *((EggState*) value.data());
-            printEggState(&state);
+            EggState *state = (EggState*) value.data();
+            printEggState(state);
             // print or do whatever you need with the value
         }
         
         
       }
   }
-
-
-
-  Serial.println("Bluetooth Low Energy Central - LED control");
   
   Serial.println("Scan block end");
 }
