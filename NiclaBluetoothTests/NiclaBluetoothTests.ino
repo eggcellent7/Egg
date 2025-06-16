@@ -1,14 +1,41 @@
 #include <ArduinoBLE.h>
 #include "Nicla_System.h"
+#include "Arduino_BHY2.h"
 
-BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214");
+#define SERVICE_NAME "EggcellentImposter"
+#define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
+#define CHAR_ID "EGGD"
 
-// Bluetooth® Low Energy LED Switch Characteristic - custom 128-bit UUID, read and writable by central
+typedef struct EggStateStruct {
+  float qx;
+  float qy;
+  float qz;
+  float qw;
+  float temp;
+  float humidity;
+  float photo1;
+  float photo2;
+} EggState;
 
-BLEByteCharacteristic switchCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+EggState state;
+
+#define BLE_CHAR_PROPS BLERead | BLEWrite | BLENotify
+
+BLEService eggService(SERVICE_UUID);
+BLECharacteristic eggCharacteristic(CHAR_ID, BLE_CHAR_PROPS, sizeof(EggStateStruct), true);
+
+// Sensor Stuff
+Sensor temperature(SENSOR_ID_TEMP);
+float temperatureValue = 0;
+
+const unsigned long SENSOR_UPDATE_PERIOD = 1 * 1000; // 1 seecond 
+
+SensorQuaternion quaternion(SENSOR_ID_RV);
 
 
 #define ledPin LED_BUILTIN
+
+unsigned long last_update;
 
 
 void setup() {
@@ -16,6 +43,10 @@ void setup() {
   Serial.begin(9600);
 
   while (!Serial);
+
+  BHY2.begin();
+  temperature.begin();
+  quaternion.begin();
 
 
   // set LED pin to output mode
@@ -27,7 +58,7 @@ void setup() {
 
   if (!BLE.begin()) {
 
-    Serial.println("starting Bluetooth® Low Energy module failed!");
+    Serial.println("starting Bluetooth Low Energy module failed!");
 
 
     while (1);
@@ -37,24 +68,15 @@ void setup() {
 
   // set advertised local name and service UUID:
 
-  BLE.setLocalName("LED");
-
-  BLE.setAdvertisedService(ledService);
-
-
-  // add the characteristic to the service
-
-  ledService.addCharacteristic(switchCharacteristic);
+  BLE.setLocalName(SERVICE_NAME);
+  BLE.setAdvertisedService(eggService);
+  eggService.addCharacteristic(eggCharacteristic);
 
 
   // add service
 
-  BLE.addService(ledService);
-
-
-  // set the initial value for the characeristic:
-
-  switchCharacteristic.writeValue(0);
+  BLE.addService(eggService);
+  updateSensors();
 
 
   // start advertising
@@ -62,10 +84,25 @@ void setup() {
   BLE.advertise();
 
 
-  Serial.println("BLE LED Peripheral");
+  Serial.println("Setup Completed");
 
 }
 
+void updateSensors()
+{
+  BHY2.update();
+
+  state.temp = temperature.value();
+
+  state.qx = quaternion.x();
+  state.qx = quaternion.y();
+  state.qx = quaternion.z();
+  state.qx = quaternion.w();
+
+  last_update = millis();
+
+  eggService.writeValue((void*) &state, sizeof(EggStateStruct));
+}
 
 void loop() {
 
@@ -84,7 +121,7 @@ void loop() {
 
   if (central) {
 
-    Serial.print("Connected to central: ");
+    Serial.print(F"Connected to central: ");
 
     // print the central's MAC address:
 
@@ -99,26 +136,9 @@ void loop() {
 
       // use the value to control the LED:
 
-
-
-      if (switchCharacteristic.written()) {
-
-        if (switchCharacteristic.value()) {   // any value other than 0
-
-          Serial.println("LED on");
-
-          digitalWrite(ledPin, HIGH);         // will turn the LED on
-
-        } else {                              // a 0 value
-
-          Serial.println(F("LED off"));
-
-          digitalWrite(ledPin, LOW);          // will turn the LED off
-
-        }
-
-      }
-
+      unsigned long time = millis();
+      if (time - last_update > SENSOR_UPDATE_PERIOD)
+        updateSensors();
     }
 
 

@@ -1,4 +1,24 @@
-#include <ArduinoBLE.h>
+#include "NimBLEDevice.h"
+#include <vector>
+
+#define SERVICE_NAME "EggcellentImposter"
+#define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
+#define CHAR_ID "EGGD"
+
+#define SCAN_PERIOD (10 * 1000)
+
+unsigned long last_scan;
+
+typedef struct EggStateStruct {
+  float qx;
+  float qy;
+  float qz;
+  float qw;
+  float temp;
+  float humidity;
+  float photo1;
+  float photo2;
+} EggState;
 
 
 
@@ -9,18 +29,43 @@ void setup() {
 
   // initialize the Bluetooth® Low Energy hardware
 
-  BLE.begin();
+  NimBLEDevice::init("");
+
+  NimBLEScan *pScan = NimBLEDevice::getScan();
+  NimBLEScanResults results = pScan->getResults(10 * 1000);
+
+  NimBLEUUID serviceUuid(SERVICE_UUID);
+ 
+  for (int i = 0; i < results.getCount(); i++) {
+      const NimBLEAdvertisedDevice *device = results.getDevice(i);
+      
+      if (device->isAdvertisingService(serviceUuid)) {
+        NimBLEClient *pClient = NimBLEDevice::createClient();
+
+        if (!pClient) { // Make sure the client was created
+          break;
+        }
+        
+        if (pClient->connect(&device)) {
+            //success
+            Serial.println("Connected to device");
+        } else {
+            // failed to connect
+            Serial.println("Failed to connect to device");
+        }
+      }
+  }
 
 
-  Serial.println("Bluetooth® Low Energy Central - LED control");
 
+  Serial.println("Bluetooth Low Energy Central - LED control");
 
-  // start scanning for peripherals
-
-  BLE.scanForUuid("19b10000-e8f2-537e-4f6c-d104768a1214");
+  Serial.println("Scan start");
+  
+  Serial.println("Scan block end");
 }
 
-void controlLed(BLEDevice peripheral) {
+void connectToPeripheral(BLEDevice peripheral) {
 
   // connect to the peripheral
 
@@ -59,28 +104,30 @@ void controlLed(BLEDevice peripheral) {
   }
 
 
-  // retrieve the LED characteristic
+  // retrieve the Egg characteristic
 
-  BLECharacteristic ledCharacteristic = peripheral.characteristic("19b10001-e8f2-537e-4f6c-d104768a1214");
+  BLECharacteristic characteristic = peripheral.characteristic(CHAR_ID);
 
 
-  if (!ledCharacteristic) {
+  if (!characteristic) {
 
-    Serial.println("Peripheral does not have LED characteristic!");
+    Serial.println("Peripheral does not have Egg characteristic!");
 
     peripheral.disconnect();
 
     return;
 
-  } else if (!ledCharacteristic.canWrite()) {
+  } else if (!characteristic.canRead()) {
 
-    Serial.println("Peripheral does not have a writable LED characteristic!");
+    Serial.println("Peripheral does not have a readable egg characteristic!");
 
     peripheral.disconnect();
 
     return;
 
   }
+
+  return;
 
 
   while (peripheral.connected()) {
@@ -128,6 +175,18 @@ void controlLed(BLEDevice peripheral) {
 }
 
 void loop() {
+  unsigned long time = millis();
+
+  // Quick fix to prevent issues with overflow
+  if (last_scan > time)
+    last_scan = time;
+  
+  if (time - last_scan > SCAN_PERIOD) {
+    last_scan = time;
+
+    
+  }
+
   // check if a peripheral has been discovered
 
   BLEDevice peripheral = BLE.available();
@@ -152,24 +211,12 @@ void loop() {
     Serial.println();
 
 
-    if (peripheral.localName() != "LED") {
-
-      return;
-
-    }
-
-
-    // stop scanning
-
-    BLE.stopScan();
-
-
-    controlLed(peripheral);
-
-
-    // peripheral disconnected, start scanning again
-
-    BLE.scanForUuid("19b10000-e8f2-537e-4f6c-d104768a1214");
-
+    connectToPeripheral(peripheral);
   }
+
+  delay(500);
+
+  Serial.println("Looped");
+
+  
 }
