@@ -4,7 +4,7 @@
 
 #define SERVICE_NAME "EggcellentImposter"
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
-#define CHAR_ID "EGGD"
+#define CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
 
 typedef struct EggStateStruct {
   float qx;
@@ -44,9 +44,9 @@ void setup() {
 
   while (!Serial);
 
-  BHY2.begin();
-  temperature.begin();
-  quaternion.begin();
+  // BHY2.begin();
+  // temperature.begin();
+  // quaternion.begin();
 
 
   // set LED pin to output mode
@@ -76,7 +76,7 @@ void setup() {
   // add service
 
   BLE.addService(eggService);
-  updateSensors();
+  //updateSensors();
 
 
   // start advertising
@@ -101,7 +101,7 @@ void updateSensors()
 
   last_update = millis();
 
-  eggService.writeValue((void*) &state, sizeof(EggStateStruct));
+  eggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
 }
 
 void loop() {
@@ -121,7 +121,7 @@ void loop() {
 
   if (central) {
 
-    Serial.print(F"Connected to central: ");
+    Serial.print(F("Connected to central: "));
 
     // print the central's MAC address:
 
@@ -148,6 +148,8 @@ void loop() {
 
     Serial.println(central.address());
 
+  } else {
+    
   }
 
 }
