@@ -7,8 +7,6 @@
 
 #define SCAN_PERIOD (10 * 1000)
 
-unsigned long last_scan;
-
 typedef struct EggStateStruct {
   float qx;
   float qy;
@@ -19,6 +17,16 @@ typedef struct EggStateStruct {
   float photo1;
   float photo2;
 } EggState;
+
+typedef struct EggDeviceStruct {
+    EggState state;
+    NimBLERemoteService *pService;
+    NimBLEClient *pClient;
+    NimBLEAdvertisedDevice *device;
+    NimBLERemoteCharacteristic *pCharacteristic;
+    unsigned long last_poll;
+
+} EggDevice;
 
 
 void printEggState(EggState* state)
@@ -32,51 +40,121 @@ void printEggState(EggState* state)
     state->qx, state->qy, state->qz, state->qw);
 }
 
+static constexpr uint32_t scanTimeMs = 5 * 1000;
+
+std::vector<EggDevice*> egg_devices;
+
+
+class ClientCallbacks : public NimBLEClientCallbacks {
+    void onConnect(NimBLEClient* pClient) override {
+        Serial.printf("Connected to: %s\n", pClient->getPeerAddress().toString().c_str());
+    }
+
+    void onDisconnect(NimBLEClient* pClient, int reason) override {
+        Serial.printf("%s Disconnected, reason = %d - Starting scan\n", pClient->getPeerAddress().toString().c_str(), reason);
+        NimBLEDevice::getScan()->start(scanTimeMs);
+    }
+} clientCallbacks;
+
+class ScanCallbacks : public NimBLEScanCallbacks {
+    void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
+        //Serial.printf("Advertised Device found: %s\n", advertisedDevice->toString().c_str());
+        if (advertisedDevice->haveName() && advertisedDevice->getName() == SERVICE_NAME) {
+            Serial.printf("Found Our Device\n");
+
+            NimBLEDevice::getScan()->stop();
+
+            /** Async connections can be made directly in the scan callbacks */
+            auto pClient = NimBLEDevice::createClient(advertisedDevice->getAddress());
+            if (!pClient) {
+                Serial.printf("Failed to create client\n");
+                return;
+            }
+
+            EggDevice *egg_device = (EggDevice*) malloc(sizeof(EggDevice));
+            egg_device->device = (NimBLEAdvertisedDevice*)advertisedDevice;
+            egg_device->pClient = pClient;
+            egg_devices.push_back(egg_device);
+
+            Serial.println("Connection attempt");
+        }
+    }
+
+    void onScanEnd(const NimBLEScanResults& results, int reason) override {
+        Serial.printf("Scan Ended\n");
+        //NimBLEDevice::getScan()->start(scanTimeMs);
+    }
+} scanCallbacks;
+
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   Serial.println("The device started, now you can pair it with bluetooth!");
 
   // initialize the Bluetooth® Low Energy hardware
+  NimBLEDevice::init("");  
 
-  NimBLEDevice::init("");
+  NimBLEScan* pScan = NimBLEDevice::getScan();
+  pScan->setScanCallbacks(&scanCallbacks);
+  pScan->setInterval(45);
+  pScan->setWindow(45);
+  pScan->setActiveScan(true);
+  pScan->start(scanTimeMs);
 
-  delay(100);
-
-  NimBLEScan *pScan = NimBLEDevice::getScan();
-  //pScan->setActiveScan(true);
-
-  Serial.println("Scan start");
-
-  NimBLEScanResults results = pScan->getResults(5 * 1000);
-
-  NimBLEUUID serviceUuid(SERVICE_UUID);
- 
-  for (int i = 0; i < results.getCount(); i++) {
-      const NimBLEAdvertisedDevice *device = results.getDevice(i);
-      
-      if (device->isAdvertisingService(serviceUuid)) {
-        NimBLEClient *pClient = NimBLEDevice::createClient();
-
-        if (!pClient) { // Make sure the client was created
-        Serial.println("Failed to create client");
-          break;
-        }
+  // NimBLERemoteCharacteristic *pCharacteristic = pService->getCharacteristic(CHAR_ID);
         
-        if (!pClient->connect(device)) {
-          Serial.println("Failed to connect to device");
-          continue;
+  //       if (pCharacteristic != nullptr) {
+  //           NimBLEAttValue value = pCharacteristic->readValue();
+  //           Serial.println("read service");
+
+  //           EggState *state = (EggState*) value.data();
+  //           printEggState(state);
+  //           // print or do whatever you need with the value
+  //       } else {
+  //         Serial.println("pCharacteristic is a null pointer");
+  //         return;
+  //       }
+}
+
+
+void loop() {
+    // delay(1000);
+    // auto pClients = NimBLEDevice::getConnectedClients();
+    // if (!pClients.size()) {
+    //     return;
+    // }
+
+    delay(500);
+
+    for (EggDevice* egg_device : egg_devices) {
+        //Serial.println("Started");
+        // if (egg_device->pService != nullptr) {
+        //     return;
+        // }
+
+        Serial.println("Started2");
+
+        if (!egg_device->pClient->connect()) { // delete attributes, async connect, no MTU exchange
+            NimBLEDevice::deleteClient(egg_device->pClient);
+            Serial.printf("Failed to connect\n");
+            return;
         }
 
-        //success
-        Serial.println("Connected to device");
+        Serial.println("Connection success");
 
-        NimBLERemoteService *pService = pClient->getService(serviceUuid);
+        NimBLEUUID serviceUuid(SERVICE_UUID);
+
+        NimBLERemoteService *pService = egg_device->pClient->getService(serviceUuid);
+
+        egg_device->pService = pService;
         
         if (pService == nullptr) {
-          Serial.println("PService is a null pointer");
-          continue;
+            Serial.println("PService is a null pointer");
+            egg_device->pClient->disconnect();
+            return;
         }
+
+        Serial.println("P service is not null");
 
         NimBLERemoteCharacteristic *pCharacteristic = pService->getCharacteristic(CHAR_ID);
         
@@ -86,29 +164,11 @@ void setup() {
             EggState *state = (EggState*) value.data();
             printEggState(state);
             // print or do whatever you need with the value
+        } else {
+            Serial.println("pCharacteristic is null");
         }
-        
-        
-      }
-  }
-  
-  Serial.println("Scan block end");
-}
+    }
 
-void loop() {
-  unsigned long time = millis();
-
-  // Quick fix to prevent issues with overflow
-  if (last_scan > time)
-    last_scan = time;
-  
-  if (time - last_scan > SCAN_PERIOD) {
-    last_scan = time;
-
-    
-  }
-
-  // check if a peripheral has been discovered
-
-  
+    // NimBLEDevice::getScan()->start(scanTimeMs);
+    Serial.println("Not hanging");
 }
