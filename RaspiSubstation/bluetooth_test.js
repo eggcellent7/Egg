@@ -15,7 +15,7 @@ async function main()
 	while (true)
 	{
 		const devices = adapter.devices()
-		for (int i = 0; i < devices; i++)
+		for (let i = 0; i < devices; i++)
 			console.log("Found device "+devices[i])
 	}
 
