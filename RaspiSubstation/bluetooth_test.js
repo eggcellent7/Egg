@@ -1,12 +1,14 @@
 const {createBluetooth} = require('node-ble')
 const {bluetooth, destroy} = createBluetooth()
-const adapter = await bluetooth.defaultAdapter()
+
 
 const SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
 const CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
 
 async function main()
 {
+	const adapter = await bluetooth.defaultAdapter()
+
 	if (! await adapter.isDiscovering())
 	  await adapter.startDiscovery()
 
