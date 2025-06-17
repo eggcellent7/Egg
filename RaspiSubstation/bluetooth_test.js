@@ -3,7 +3,7 @@ const {bluetooth, destroy} = createBluetooth()
 
 
 const SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
-const CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
+const CHAR_ID = "19B10001-E8F2-537E-4F6C-D104768A1214"
 
 async function main()
 {
