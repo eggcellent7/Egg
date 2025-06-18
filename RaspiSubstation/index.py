@@ -72,4 +72,6 @@ async def main():
     # scanner stops when block exits
     ...
 
+print("Running python")
+
 asyncio.run(main())
