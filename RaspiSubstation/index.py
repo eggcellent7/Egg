@@ -9,11 +9,13 @@ SERVICE_NAME = "EggcellentImposter"
 SERVICE_UUID = "19B10000-E8F2-537E-4F6C-D104768A1214"
 CHAR_ID = "19B10001-E8F2-537E-4F6C-D104768A1214"
 
+device_files_path = "./device_files/"
+
 EGG_STATE_STRUCT_STR = "i f f f f f f f f"
 
 connected_addresses = set()
 
-def update_data(client, service_uuid):
+async def update_data(client, service_uuid):
     byte_array = await client.read_gatt_char(CHAR_ID)
 
     # Adding timestamp as first 
@@ -21,8 +23,9 @@ def update_data(client, service_uuid):
     time_stamp_bytes = struct.pack("f", t)
     byte_array = time_stamp_bytes + byte_array
 
-    with open(service_uuid + ".egg", "a") as f:
-        f.write(base64.b64encode(byte_array))
+    with open(device_files_path + service_uuid + ".egg", "a") as f:
+        f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
+        f.close()
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
     print("Unpacked Data for "+service_uuid)
@@ -38,8 +41,8 @@ async def connect_to_device(device, advertising_data):
         print("Connected")
 
         while (True):
-            update_data(client, advertising_data.service_uuids[0])
-            time.sleep(1000)
+            await update_data(client, advertising_data.service_uuids[0])
+            time.sleep(1)
 
 
 async def main():
