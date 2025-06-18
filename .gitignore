@@ -1,5 +1,7 @@
 # Generated .egg files
 *.egg
+# firebase stuff
+service_account.json
 
 # Logs
 logs

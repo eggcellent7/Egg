@@ -4,8 +4,8 @@
 #include <FirebaseClient.h>
 
 // Network and Firebase credentials
-#define WIFI_SSID "Rice Visitor"
-#define WIFI_PASSWORD ""
+#define WIFI_SSID "iPhone"
+#define WIFI_PASSWORD "dohoonimal"
 
 #define Web_API_KEY "AIzaSyBb6frNSSB91BMZDe2Kk4G-lUYeawjY5SY"
 #define DATABASE_URL "https://eggcellent-database-default-rtdb.firebaseio.com/"
