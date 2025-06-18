@@ -36,9 +36,7 @@ watch(device_files_path, (eventType, filename) => {
 	if (fileData.length > 0) {
 		if (!eggs[filename])	
 			eggs[filename] = []
-
-		eggs[filename].append(fileData)
-
+		eggs[filename].push(fileData)
 		// Clear the file
 		writeFileSync(file_path, "", "w")
 	}
