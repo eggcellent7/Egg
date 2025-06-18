@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
-import { readFileSync, existsSync, watch } from "fs"
+import { readFileSync, writeFileSync, existsSync, watch } from "fs"
 import { extname } from "path"
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
@@ -36,6 +36,11 @@ watch(device_files_path, (eventType, filename) => {
 	if (fileData.length > 0) {
 		if (!eggs[filename])	
 			eggs[filename] = []
+
+		eggs[filename].append(fileData)
+
+		// Clear the file
+		writeFileSync(file_path, "", "w")
 	}
 
 });

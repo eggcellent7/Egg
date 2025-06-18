@@ -1,17 +1,34 @@
 import asyncio
 import struct
+import base64
 from bleak import BleakScanner
 from bleak import BleakClient
+import time
 
 SERVICE_NAME = "EggcellentImposter"
 SERVICE_UUID = "19B10000-E8F2-537E-4F6C-D104768A1214"
 CHAR_ID = "19B10001-E8F2-537E-4F6C-D104768A1214"
 
-EGG_STATE_STRUCT_STR = "f f f f f f f f"
+EGG_STATE_STRUCT_STR = "i f f f f f f f f"
 
 connected_addresses = set()
 
-data_points = []
+def update_data(client, service_uuid):
+    byte_array = await client.read_gatt_char(CHAR_ID)
+
+    # Adding timestamp as first 
+    t = time.time()
+    time_stamp_bytes = struct.pack("f", t)
+    byte_array = time_stamp_bytes + byte_array
+
+    with open(service_uuid + ".egg", "a") as f:
+        f.write(base64.b64encode(byte_array))
+
+    unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
+    print("Unpacked Data for "+service_uuid)
+    print(unpacked_data)
+
+
 
 async def connect_to_device(device, advertising_data):
     connected_addresses.add(device.address)
@@ -20,12 +37,9 @@ async def connect_to_device(device, advertising_data):
     async with BleakClient(device) as client:
         print("Connected")
 
-        byte_array = await client.read_gatt_char(CHAR_ID)
-        unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
-
-        data_points.push(unpacked_data)
-
-        print(unpacked_data)
+        while (True):
+            update_data(client, advertising_data.service_uuids[0])
+            time.sleep(1000)
 
 
 async def main():
