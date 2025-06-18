@@ -1,3 +1,6 @@
+# Generated .egg files
+*.egg
+
 # Logs
 logs
 *.log
