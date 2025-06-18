@@ -1,3 +1,6 @@
+# firebase stuff
+service_account.json
+
 # Logs
 logs
 *.log
