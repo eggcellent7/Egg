@@ -7,7 +7,8 @@ import { extname } from "path"
 // TODO: Replace the following with your app's Firebase project configuration
 const service_account = JSON.parse(readFileSync("./service_account.json"));
 
-const eggs = {}
+const eggs = {};
+const eggWrites = {};
 
 const app = admin.initializeApp({
 	credential: admin.credential.cert(service_account)
@@ -44,11 +45,16 @@ watch(device_files_path, async (eventType, filename) => {
 
 	// If the file has data in it to send
 	if (fileData.length > 0) {
+		if (!eggWrites[filename]) 
+			eggWrites[filename] = 0;
+		eggWrites[filename] += 1;
+
 		if (!eggs[filename])	
 			eggs[filename] = ''
 		eggs[filename] += fileData
 
-		if (eggs[filename].length >= data_threshold) {
+
+		if (eggWrites[filename] >= data_threshold) {
 			try {
 				const docRef = await egg_col.add({
 					filename: filename,
@@ -59,6 +65,7 @@ watch(device_files_path, async (eventType, filename) => {
 		
 				// Clear the buffer after upload
 				eggs[filename] = '';
+				eggWrites[filename] = 0;
 			} catch (e) {
 				console.error("Error uploading to Firestore:", e);
 			}
