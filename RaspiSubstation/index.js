@@ -1,19 +1,29 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
 import { readFileSync, writeFileSync, existsSync, watch } from "fs"
-import { initializeApp } from 'firebase-admin/app';
+import admin  from 'firebase-admin';
 import { extname } from "path"
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
 
 // TODO: Replace the following with your app's Firebase project configuration
-const firebaseConfig = JSON.parse(readFileSync("./service_account.json"));
+const service_account = JSON.parse(readFileSync("./service_account.json"));
 
 const eggs = {};
 const eggWrites = {};
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = admin.initializeApp({
+	credential: admin.credential.cert(service_account)
+});
+
+const db = admin.firestore();
+
+const egg_col = db.collection("eggdata")
+
+//await db.collection('users').add({
+//  name: 'Alice',
+//  age: 25,
+//});
+
+
 const data_threshold = 100;
 
 const device_files_path = "./device_files/"
@@ -46,7 +56,7 @@ watch(device_files_path, async (eventType, filename) => {
 
 		if (eggWrites[filename] >= data_threshold) {
 			try {
-				const docRef = await addDoc(collection(db, "deviceData"), {
+				const docRef = await egg_col.add({
 					filename: filename,
 					timestamp: new Date().toISOString(),
 					data: eggs[filename] // array of strings
@@ -61,7 +71,7 @@ watch(device_files_path, async (eventType, filename) => {
 			}
 }
 		// Clear the file
-		writeFileSync(file_path, "", "w")
+		writeFileSync(file_path, "")
 	}
 
 });
