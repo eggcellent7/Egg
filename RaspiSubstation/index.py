@@ -15,9 +15,7 @@ EGG_STATE_STRUCT_STR = "i f f f f f f f f"
 
 connected_addresses = set()
 
-async def update_data(client, service_uuid):
-    byte_array = await client.read_gatt_char(CHAR_ID)
-
+def update_data(byte_array, service_uuid):
     # Adding timestamp as first 
     t = time.time()
     time_stamp_bytes = struct.pack("f", t)
@@ -40,10 +38,15 @@ async def connect_to_device(device, advertising_data):
     async with BleakClient(device) as client:
         print("Connected")
 
-        while (True):
-            await update_data(client, advertising_data.service_uuids[0])
-            time.sleep(1)
+        async def notify(sender, data):
+            update_data(data, advertising_data.service_uuids[0])
+            
+        await client.start_notify(CHAR_ID, notify)
 
+        print("end notify")
+        
+        while (True):
+            time.sleep(1)
 
 async def main():
     stop_event = asyncio.Event()
@@ -68,6 +71,7 @@ async def main():
         # Important! Wait for an event to trigger stop, otherwise scanner
         # will stop immediately.
         await stop_event.wait()
+        print("Scan stopp")
 
     # scanner stops when block exits
     ...
