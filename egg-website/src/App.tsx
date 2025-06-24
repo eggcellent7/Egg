@@ -1,35 +1,46 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { db } from "./firebaseConfig";
+import { collection, getDocs } from "firebase/firestore";
+import { decodeBase64ToFloats } from "./utils/base64Decoder";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [posts, setPosts] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "eggdata"));
+        const data = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          const decodedData = docData.data
+            ? docData.data.split(":").filter(Boolean).map(decodeBase64ToFloats)
+            : undefined;
+
+          return {
+            id: doc.id,
+            ...docData,
+            data: decodedData, // Replace encoded string with decoded float arrays
+          };
+        });
+        setPosts(data);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      <h1>data from firestore lesgooooooo</h1>
+      <ul>
+        {posts.map(post => (
+          <li key={post.id}>{JSON.stringify(post)}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
-export default App
+export default App;
