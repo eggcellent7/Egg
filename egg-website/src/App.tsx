@@ -33,7 +33,7 @@ function App() {
 
   return (
     <div>
-      <h1>data from firestore lesgooooooo</h1>
+      <h1>data from firestore!</h1>
       <ul>
         {posts.map(post => (
           <li key={post.id}>{JSON.stringify(post)}</li>
