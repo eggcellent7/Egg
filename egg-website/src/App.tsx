@@ -33,14 +33,36 @@ function App() {
 
   return (
     <div>
-      <h1>data from firestore!</h1>
-      <ul>
-        {posts.map(post => (
-          <li key={post.id}>{JSON.stringify(post)}</li>
-        ))}
-      </ul>
+      <h1>EGG DATA WOOHOO</h1>
+      {posts.map(post => (
+        <div key={post.id} style={{ marginBottom: "2rem" }}>
+          <h2>ID: {post.id}</h2>
+          <p>Filename: {post.filename}</p>
+          <p>Timestamp: {new Date(post.timestamp).toLocaleString()}</p>
+
+          <table border={1} cellPadding={5} style={{ borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {post.data && post.data[0] && post.data[0].map((_: any, i: number) => (
+                  <th key={i}>Field {i}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {post.data && post.data.map((row: any[], i: number) => (
+                <tr key={i}>
+                  {row.map((val, j) => (
+                    <td key={j}>{typeof val === "number" ? val.toFixed(6) : val}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
+
 }
 
 export default App;
