@@ -5,6 +5,11 @@ import { decodeBase64ToFloats } from "./utils/base64Decoder";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { Typography, Box, CssBaseline } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { Canvas, useFrame, extend } from '@react-three/fiber';
+import { useLoader } from '@react-three/fiber';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import * as THREE from 'three';
+import { Suspense, useRef } from 'react';
 
 const fieldNames = [
   "qx", "qy", "qz", "qw", "temp", "humidity", "photo1", "photo2"
@@ -28,6 +33,23 @@ const darkTheme = createTheme({
     },
   },
 });
+
+function EggModel({ quaternions }) {
+  const obj = useLoader(OBJLoader, "/egg.obj");
+  const ref = useRef<THREE.Object3D>(null);
+  const indexRef = useRef(0);
+
+  useFrame(() => {
+    if (!ref.current || quaternions.length === 0) return;
+    const { x, y, z, w } = quaternions[indexRef.current];
+    if ([x, y, z, w].every(n => typeof n === 'number' && !isNaN(n))) {
+      ref.current.quaternion.set(x, y, z, w);
+      indexRef.current = (indexRef.current + 1) % quaternions.length;
+    }
+  });
+
+  return <primitive object={obj} ref={ref} scale={0.5} />;
+}
 
 function App() {
   const [groupedData, setGroupedData] = useState<Record<string, any[][]>>({});
@@ -76,6 +98,23 @@ function App() {
         {Object.entries(groupedData).map(([filename, rows]) => (
           <Box key={filename} mb={10}>
             <Typography variant="h5" gutterBottom>Filename: {filename}</Typography>
+
+            {/* 3D Egg Viewer */}
+            <Box mt={4} mb={4} sx={{ width: "100%", height: "400px", background: "#222" }}>
+              <Canvas camera={{ position: [0, 0, 2] }}>
+                <ambientLight intensity={0.5} />
+                <directionalLight position={[5, 5, 5]} />
+                <Suspense fallback={null}>
+                  <EggModel quaternions={rows.map(row => ({
+                    x: row[1], // qx
+                    y: row[2], // qy
+                    z: row[3], // qz
+                    w: row[4], // qw
+                  }))} />
+                </Suspense>
+              </Canvas>
+            </Box>
+
 
             {/* Data Table */}
             <table border={1} cellPadding={5} style={{
