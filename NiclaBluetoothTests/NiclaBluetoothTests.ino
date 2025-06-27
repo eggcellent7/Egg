@@ -6,6 +6,9 @@
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
 #define CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
 
+#define PHOTO1_ENABLE_PIN 10
+#define PHOTO2_ENABLE_PIN 9
+
 typedef struct EggStateStruct {
   float qx;
   float qy;
@@ -55,6 +58,10 @@ void setup() {
   // set LED pin to output mode
 
   pinMode(ledPin, OUTPUT);
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  // pinMode(PHOTO1_ENABLE_PIN, OUTPUT);
+  // pinMode(PHOTO2_ENABLE_PIN, OUTPUT);
 
 
   // begin initialization
@@ -91,6 +98,8 @@ void setup() {
 
   updateSensors();
 
+  // digitalWrite(PHOTO1_ENABLE_PIN, HIGH);
+
 }
 
 void updateSensors()
@@ -105,6 +114,25 @@ void updateSensors()
   state.qy = quaternion.y();
   state.qz = quaternion.z();
   state.qw = quaternion.w();
+
+  // digitalWrite(PHOTO1_ENABLE_PIN, HIGH);
+  // digitalWrite(PHOTO2_ENABLE_PIN, HIGH);
+
+  delay(10);
+
+  analogRead(A0);
+  analogRead(A1);
+  state.photo1 = analogRead(A0);
+
+  analogRead(A1);
+  analogRead(A1);
+  state.photo2 = analogRead(A1);
+
+  delay(10);
+
+  // digitalWrite(PHOTO1_ENABLE_PIN, LOW);
+  // digitalWrite(PHOTO2_ENABLE_PIN, LOW);
+
 
   last_update = millis();
 

@@ -11,15 +11,19 @@ CHAR_ID = "19B10001-E8F2-537E-4F6C-D104768A1214"
 
 device_files_path = "./device_files/"
 
-EGG_STATE_STRUCT_STR = "i f f f f f f f f"
+EGG_STATE_STRUCT_STR = "f f f f f f f f f"
 
 connected_addresses = set()
 
 def update_data(byte_array, service_uuid):
     # Adding timestamp as first 
-    t = time.time()
-    time_stamp_bytes = struct.pack("f", t)
-    byte_array = time_stamp_bytes + byte_array
+    t = float(time.time())
+    time_stamp_bytes = struct.pack("<f", t)
+    tf = struct.unpack("<f", time_stamp_bytes)[0]
+    print("Time: " + str(t))
+    print(tf)
+    print(len(time_stamp_bytes))
+    byte_array = time_stamp_bytes + byte_array[:]
 
     with open(device_files_path + service_uuid + ".egg", "a") as f:
         f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
@@ -43,10 +47,12 @@ async def connect_to_device(device, advertising_data):
             
         await client.start_notify(CHAR_ID, notify)
 
+        while (client.is_connected):
+            await asyncio.sleep(1)
+
         print("end notify")
         
-        while (True):
-            time.sleep(1)
+
 
 async def main():
     stop_event = asyncio.Event()
