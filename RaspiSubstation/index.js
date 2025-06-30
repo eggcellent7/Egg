@@ -19,12 +19,6 @@ const db = admin.firestore();
 
 const egg_col = db.collection("eggs")
 
-//await db.collection('users').add({
-//  name: 'Alice',
-//  age: 25,
-//});
-
-
 const data_threshold = 10;
 
 const device_files_path = "./device_files/";

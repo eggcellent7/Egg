@@ -18,11 +18,8 @@ connected_addresses = set()
 def update_data(byte_array, service_uuid):
     # Adding timestamp as first 
     t = float(time.time())
-    time_stamp_bytes = struct.pack("<f", t)
-    tf = struct.unpack("<f", time_stamp_bytes)[0]
-    print("Time: " + str(t))
-    print(tf)
-    print(len(time_stamp_bytes))
+    time_stamp_bytes = struct.pack("d", t)
+    tf = struct.unpack("d", time_stamp_bytes)[0]
     byte_array = time_stamp_bytes + byte_array[:]
 
     with open(device_files_path + service_uuid + ".egg", "a") as f:
