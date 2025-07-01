@@ -1,55 +1,24 @@
 import { useEffect, useState } from "react";
 import { db } from "./firebaseConfig";
-import { collection, getDocs } from "firebase/firestore";
-import { decodeBase64ToFloats } from "./utils/base64Decoder";
+import { collection, getDocs, doc } from "firebase/firestore";
+import { decodeBase64ToFloat64ThenFloats } from "./utils/base64Decoder";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { Typography, Box, CssBaseline } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { Canvas, useFrame, extend } from '@react-three/fiber';
-import { useLoader } from '@react-three/fiber';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import * as THREE from 'three';
-import { Suspense, useRef } from 'react';
 
-const fieldNames = [
-  "qx", "qy", "qz", "qw", "temp", "humidity", "photo1", "photo2"
-];
-
+const fieldNames = ["qx", "qy", "qz", "qw", "temp", "humidity", "photo1", "photo2"];
 const graphedFields = fieldNames.slice(4);
 
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
-    background: {
-      default: "#121212",
-    },
-    text: {
-      primary: "#ffffff",
-    },
+    background: { default: "#121212" },
+    text: { primary: "#ffffff" },
   },
   typography: {
-    allVariants: {
-      color: "#ffffff",
-    },
+    allVariants: { color: "#ffffff" },
   },
 });
-
-function EggModel({ quaternions }) {
-  const obj = useLoader(OBJLoader, "/egg.obj");
-  const ref = useRef<THREE.Object3D>(null);
-  const indexRef = useRef(0);
-
-  useFrame(() => {
-    if (!ref.current || quaternions.length === 0) return;
-    const { x, y, z, w } = quaternions[indexRef.current];
-    if ([x, y, z, w].every(n => typeof n === 'number' && !isNaN(n))) {
-      ref.current.quaternion.set(x, y, z, w);
-      indexRef.current = (indexRef.current + 1) % quaternions.length;
-    }
-  });
-
-  return <primitive object={obj} ref={ref} scale={0.5} />;
-}
 
 function App() {
   const [groupedData, setGroupedData] = useState<Record<string, any[][]>>({});
@@ -57,27 +26,35 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const snapshot = await getDocs(collection(db, "eggdata"));
-        const rawPosts = snapshot.docs.map(doc => {
-          const docData = doc.data();
-          const decodedData = docData.data
-            ? docData.data.split(":").filter(Boolean).map(decodeBase64ToFloats)
-            : [];
-
-          return {
-            filename: docData.filename,
-            data: decodedData,
-          };
-        });
-
+        const eggsSnapshot = await getDocs(collection(db, "eggs"));
         const grouped: Record<string, any[][]> = {};
-        rawPosts.forEach(post => {
-          if (!grouped[post.filename]) grouped[post.filename] = [];
-          grouped[post.filename].push(...post.data);
-        });
 
-        for (const filename in grouped) {
-          grouped[filename].sort((a, b) => a[0] - b[0]);
+        for (const eggDoc of eggsSnapshot.docs) {
+          const eggId = eggDoc.id;
+          const datapointsRef = collection(db, "eggs", eggId, "datapoints");
+          const datapointsSnapshot = await getDocs(datapointsRef);
+
+          const decodedEntries: any[][] = [];
+
+          datapointsSnapshot.forEach((docSnap) => {
+            const docData = docSnap.data();
+            const raw = docData.data;
+
+            if (typeof raw === "string") {
+              const decodedChunks = raw
+                .split(":")
+                .filter(Boolean)
+                .map(decodeBase64ToFloat64ThenFloats);
+
+              decodedEntries.push(...decodedChunks);
+            }
+          });
+
+          if (decodedEntries.length > 0) {
+            decodedEntries.sort((a, b) => b[0] - a[0]); // sort by timestamp (newest first)
+            grouped[eggId] = decodedEntries.slice(0, 100); // take most recent 100
+
+          }
         }
 
         setGroupedData(grouped);
@@ -97,24 +74,7 @@ function App() {
 
         {Object.entries(groupedData).map(([filename, rows]) => (
           <Box key={filename} mb={10}>
-            <Typography variant="h5" gutterBottom>Filename: {filename}</Typography>
-
-            {/* 3D Egg Viewer */}
-            <Box mt={4} mb={4} sx={{ width: "100%", height: "400px", background: "#222" }}>
-              <Canvas camera={{ position: [0, 0, 2] }}>
-                <ambientLight intensity={0.5} />
-                <directionalLight position={[5, 5, 5]} />
-                <Suspense fallback={null}>
-                  <EggModel quaternions={rows.map(row => ({
-                    x: row[1], // qx
-                    y: row[2], // qy
-                    z: row[3], // qz
-                    w: row[4], // qw
-                  }))} />
-                </Suspense>
-              </Canvas>
-            </Box>
-
+            <Typography variant="h5" gutterBottom>Egg ID: {filename}</Typography>
 
             {/* Data Table */}
             <table border={1} cellPadding={5} style={{
@@ -146,8 +106,8 @@ function App() {
             {/* Graphs for selected fields */}
             <Box mt={6}>
               {graphedFields.map((field) => {
-                const fullFieldIndex = fieldNames.indexOf(field);
-                const dataPoints = rows.map(row => row[fullFieldIndex + 1]);
+                const fieldIndex = fieldNames.indexOf(field);
+                const dataPoints = rows.map(row => row[fieldIndex + 1]);
                 const timestamps = rows.map(row => new Date(row[0] * 1000).toLocaleString());
 
                 return (
@@ -157,8 +117,8 @@ function App() {
                       width={1000}
                       height={250}
                       xAxis={[{
-                        data: rows.map((_, i) => i), // Index as X-axis
-                        valueFormatter: (value) => timestamps[value] || "", // Use value as index
+                        data: rows.map((_, i) => i),
+                        valueFormatter: (value) => timestamps[value] || "",
                         axisLine: { visible: false },
                         tickLabelStyle: { display: 'none' },
                         tickMinStep: 1,
@@ -175,14 +135,13 @@ function App() {
                     />
                   </Box>
                 );
-  })}
-</Box>
-
+              })}
+            </Box>
           </Box>
         ))}
       </div>
     </ThemeProvider>
   );
-};
+}
 
 export default App;
