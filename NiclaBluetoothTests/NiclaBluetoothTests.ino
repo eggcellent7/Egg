@@ -31,7 +31,7 @@ BLECharacteristic eggCharacteristic(CHAR_ID, BLE_CHAR_PROPS, sizeof(EggStateStru
 Sensor temperature(SENSOR_ID_TEMP);
 float temperatureValue = 0;
 
-const unsigned long SENSOR_UPDATE_PERIOD = 1 * 1000; // 1 seecond 
+const unsigned long SENSOR_UPDATE_PERIOD = 1 * 500; // 1 seecond 
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 
@@ -45,7 +45,7 @@ unsigned long last_update;
 
 void setup() {
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   while (!Serial);
 
@@ -60,7 +60,7 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(A0, INPUT);
   pinMode(A1, INPUT);
-  // pinMode(PHOTO1_ENABLE_PIN, OUTPUT);
+  pinMode(PHOTO1_ENABLE_PIN, OUTPUT);
   // pinMode(PHOTO2_ENABLE_PIN, OUTPUT);
 
 
@@ -102,6 +102,7 @@ void setup() {
 
 }
 
+float average_val = 0.5;
 void updateSensors()
 {
   BHY2.update();
@@ -115,30 +116,36 @@ void updateSensors()
   state.qz = quaternion.z();
   state.qw = quaternion.w();
 
-  // digitalWrite(PHOTO1_ENABLE_PIN, HIGH);
-  // digitalWrite(PHOTO2_ENABLE_PIN, HIGH);
+  digitalWrite(PHOTO1_ENABLE_PIN, HIGH);
 
   delay(10);
 
   analogRead(A0);
-  analogRead(A1);
-  state.photo1 = analogRead(A0);
-
-  analogRead(A1);
-  analogRead(A1);
-  state.photo2 = analogRead(A1);
+  analogRead(A0);
+  state.photo1 = average_val * analogRead(A0) + (1-average_val) * state.photo1;
 
   delay(10);
 
-  // digitalWrite(PHOTO1_ENABLE_PIN, LOW);
-  // digitalWrite(PHOTO2_ENABLE_PIN, LOW);
+  analogRead(A1);
+  analogRead(A1);
+  state.photo2 = average_val * analogRead(A1) + (1-average_val) * state.photo2;
+
+  // Serial.print("min:0\nmax:1024\n");
+  // Serial.print("photo1:");
+  // Serial.println(state.photo1);
+  // Serial.print("photo2:");
+  // Serial.println(state.photo2);
+
+  delay(10);
+
+  digitalWrite(PHOTO1_ENABLE_PIN, LOW);
 
 
   last_update = millis();
 
   eggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
 
-  Serial.println("Updated Sensors");
+  //Serial.println("Updated Sensors");
 }
 
 void loop() {
@@ -148,6 +155,10 @@ void loop() {
 
 
   // if a central is connected to peripheral:
+
+  unsigned long time = millis();
+  if (time - last_update > SENSOR_UPDATE_PERIOD)
+    updateSensors();
 
   if (central) {
 
