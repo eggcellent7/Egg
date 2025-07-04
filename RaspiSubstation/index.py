@@ -26,7 +26,7 @@ def update_data(byte_array, service_uuid):
         f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
         f.close()
 
-    if (True):
+    if (False):
        return
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)

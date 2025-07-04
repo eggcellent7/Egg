@@ -84,11 +84,13 @@ async function init_endpoint()
 {
 
 	// let ngrok_success = await ngrok_setup();
-	let ip_address = await get_ip_address();
+	let ip_address_success = await get_ip_address();
 	device_doc_ref.set({
 		"ngrok_endpoint": active_url,
-		"ip_address": ip_address
+		"ip_address": device_ip
 	});
+
+	logger.info("End points uploaded to firebase");
 
 }
 
@@ -142,7 +144,7 @@ watch(device_files_path, async (eventType, filename) => {
 				timestamp: new Date().toISOString(),
 				data: eggs[filename] // array of strings
 			});
-			console.log("Uploaded to Firestore with ID:", docRef.id);
+			logger.info("Uploaded to Firestore with ID:", docRef.id);
 	
 			// Clear the buffer after upload
 			eggs[filename] = '';

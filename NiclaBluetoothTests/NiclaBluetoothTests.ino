@@ -31,7 +31,7 @@ BLECharacteristic eggCharacteristic(CHAR_ID, BLE_CHAR_PROPS, sizeof(EggStateStru
 Sensor temperature(SENSOR_ID_TEMP);
 float temperatureValue = 0;
 
-const unsigned long SENSOR_UPDATE_PERIOD = 1 * 500; // 1 seecond 
+const unsigned long SENSOR_UPDATE_PERIOD = 1 * 1000; // 1 seecond 
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 
@@ -60,8 +60,6 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   pinMode(A0, INPUT);
   pinMode(A1, INPUT);
-  pinMode(PHOTO1_ENABLE_PIN, OUTPUT);
-  // pinMode(PHOTO2_ENABLE_PIN, OUTPUT);
 
 
   // begin initialization
@@ -86,7 +84,6 @@ void setup() {
   // add service
 
   BLE.addService(eggService);
-  //updateSensors();
 
 
   // start advertising
@@ -116,10 +113,6 @@ void updateSensors()
   state.qz = quaternion.z();
   state.qw = quaternion.w();
 
-  digitalWrite(PHOTO1_ENABLE_PIN, HIGH);
-
-  delay(10);
-
   analogRead(A0);
   analogRead(A0);
   state.photo1 = average_val * analogRead(A0) + (1-average_val) * state.photo1;
@@ -136,16 +129,12 @@ void updateSensors()
   // Serial.print("photo2:");
   // Serial.println(state.photo2);
 
-  delay(10);
-
-  digitalWrite(PHOTO1_ENABLE_PIN, LOW);
-
 
   last_update = millis();
 
   eggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
 
-  //Serial.println("Updated Sensors");
+  // Serial.println("Updated Sensors");
 }
 
 void loop() {

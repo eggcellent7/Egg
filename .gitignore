@@ -5,6 +5,7 @@
 service_account.json
 
 # Device Stuff
+device_name.txt
 
 # Logs
 logs
