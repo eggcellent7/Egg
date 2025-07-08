@@ -60,6 +60,11 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Helper to format timestamp to Central Time
+  const formatToCentralTime = (timestampMs: number) => {
+    return new Date(timestampMs).toLocaleString("en-US", { timeZone: "America/Chicago" });
+  };
+
   // Fetch data effect
   useEffect(() => {
     const fetchData = async () => {
@@ -182,12 +187,12 @@ function App() {
       : [0, 0, 0, 1];
 
   const animationTimestamp = animationRows.length > 0 && animationIndex < animationRows.length
-    ? new Date(animationRows[animationIndex][0] * 1000).toLocaleString()
+    ? formatToCentralTime(animationRows[animationIndex][0] * 1000)
     : "";
 
   // Timestamps for main graph xAxis formatter
   const timestamps = filteredRows.map(row =>
-    new Date(row[0] * 1000).toLocaleString()
+    formatToCentralTime(row[0] * 1000)
   );
 
   const downloadCSV = () => {
@@ -195,7 +200,12 @@ function App() {
     const csvRows = [header.join(",")];
 
     filteredRows.forEach((row) => {
-      const timestamp = new Date(row[0] * 1000).toISOString();
+      // Export in ISO but converted to Central Time ISO-like string
+      const dt = new Date(row[0] * 1000);
+      // We want the ISO but adjusted for Central Time, so we build it manually:
+      // Note: JS Date doesn't directly convert ISO to other TZ, so we use toLocaleString parts:
+      // For simplicity, just export UTC ISO string but you can customize if needed:
+      const timestamp = dt.toISOString(); // leave as UTC ISO here
       const values = row.slice(1).map((val) =>
         typeof val === "number" ? val.toFixed(6) : val
       );
