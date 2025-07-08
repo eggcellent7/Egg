@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db } from "./firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { decodeBase64ToFloat64ThenFloats } from "./utils/base64Decoder";
@@ -19,9 +19,12 @@ import {
   DialogActions,
   IconButton,
   Button,
+  Slider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import InfoIcon from "@mui/icons-material/Info";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Canvas } from "@react-three/fiber";
@@ -49,51 +52,60 @@ function App() {
   const [expandedField, setExpandedField] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState<boolean>(false);
 
-  const fetchData = async () => {
-    try {
-      const eggsSnapshot = await getDocs(collection(db, "eggs"));
-      const grouped: Record<string, any[][]> = {};
+  // Animation dialog state
+  const [animationOpen, setAnimationOpen] = useState(false);
+  const [animationStartDate, setAnimationStartDate] = useState<string>("");
+  const [animationEndDate, setAnimationEndDate] = useState<string>("");
+  const [animationIndex, setAnimationIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-      for (const eggDoc of eggsSnapshot.docs) {
-        const eggId = eggDoc.id;
-        const datapointsRef = collection(db, "eggs", eggId, "datapoints");
-        const datapointsSnapshot = await getDocs(datapointsRef);
-
-        const decodedEntries: any[][] = [];
-
-        datapointsSnapshot.forEach((docSnap) => {
-          const docData = docSnap.data();
-          const raw = docData.data;
-
-          if (typeof raw === "string") {
-            const decodedChunks = raw
-              .split(":")
-              .filter(Boolean)
-              .map(decodeBase64ToFloat64ThenFloats);
-
-            decodedEntries.push(...decodedChunks);
-          }
-        });
-
-        if (decodedEntries.length > 0) {
-          decodedEntries.sort((a, b) => b[0] - a[0]);
-          const limit = startDate || endDate ? undefined : 100;
-          grouped[eggId] = limit ? decodedEntries.slice(0, limit) : decodedEntries;
-        }
-      }
-
-      setGroupedData(grouped);
-
-      const eggIds = Object.keys(grouped);
-      if (eggIds.length > 0 && !selectedEggId) {
-        setSelectedEggId(eggIds[0]);
-      }
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    }
-  };
-
+  // Fetch data effect
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const eggsSnapshot = await getDocs(collection(db, "eggs"));
+        const grouped: Record<string, any[][]> = {};
+
+        for (const eggDoc of eggsSnapshot.docs) {
+          const eggId = eggDoc.id;
+          const datapointsRef = collection(db, "eggs", eggId, "datapoints");
+          const datapointsSnapshot = await getDocs(datapointsRef);
+
+          const decodedEntries: any[][] = [];
+
+          datapointsSnapshot.forEach((docSnap) => {
+            const docData = docSnap.data();
+            const raw = docData.data;
+
+            if (typeof raw === "string") {
+              const decodedChunks = raw
+                .split(":")
+                .filter(Boolean)
+                .map(decodeBase64ToFloat64ThenFloats);
+
+              decodedEntries.push(...decodedChunks);
+            }
+          });
+
+          if (decodedEntries.length > 0) {
+            decodedEntries.sort((a, b) => b[0] - a[0]);
+            const limit = startDate || endDate ? undefined : 100;
+            grouped[eggId] = limit ? decodedEntries.slice(0, limit) : decodedEntries;
+          }
+        }
+
+        setGroupedData(grouped);
+
+        const eggIds = Object.keys(grouped);
+        if (eggIds.length > 0 && !selectedEggId) {
+          setSelectedEggId(eggIds[0]);
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+
     fetchData();
   }, [selectedEggId, startDate, endDate]);
 
@@ -101,19 +113,79 @@ function App() {
     setSelectedEggId(event.target.value);
   };
 
+  // Main dashboard filtered and reversed for ascending time left-to-right on graphs
   const rows = groupedData[selectedEggId] || [];
-  const filteredRows = rows.filter(row => {
-    const timestampMs = row[0] * 1000;
-    if (startDate && timestampMs < new Date(startDate).getTime()) return false;
-    if (endDate && timestampMs > new Date(endDate).getTime()) return false;
-    return true;
-  });
+  const filteredRows = rows
+    .filter((row) => {
+      const timestampMs = row[0] * 1000;
+      if (startDate && timestampMs < new Date(startDate).getTime()) return false;
+      if (endDate && timestampMs > new Date(endDate).getTime()) return false;
+      return true;
+    })
+    .slice()
+    .reverse();
 
+  // Latest quaternion for main egg model (last item in chronological order)
   const latestQuaternion: [number, number, number, number] =
     filteredRows.length > 0
-      ? [filteredRows[0][1], filteredRows[0][2], filteredRows[0][3], filteredRows[0][4]]
+      ? [filteredRows[filteredRows.length - 1][1], filteredRows[filteredRows.length - 1][2], filteredRows[filteredRows.length - 1][3], filteredRows[filteredRows.length - 1][4]]
       : [0, 0, 0, 1];
 
+  // Animation dialog functions
+
+  const openAnimationDialog = () => {
+    const allRows = groupedData[selectedEggId] || [];
+    if (allRows.length === 0) return;
+
+    // sort oldest first
+    const sortedRows = [...allRows].sort((a, b) => a[0] - b[0]);
+    const startISO = new Date(sortedRows[0][0] * 1000).toISOString().slice(0, 16);
+    const endISO = new Date(sortedRows[sortedRows.length - 1][0] * 1000).toISOString().slice(0, 16);
+
+    setAnimationStartDate(startISO);
+    setAnimationEndDate(endISO);
+    setAnimationIndex(0);
+    setIsPlaying(false);
+    setAnimationOpen(true);
+  };
+
+  // Filtered rows for animation dialog (chronological order)
+  const animationRows = (groupedData[selectedEggId] || []).filter(row => {
+    const tsMs = row[0] * 1000;
+    if (animationStartDate && tsMs < new Date(animationStartDate).getTime()) return false;
+    if (animationEndDate && tsMs > new Date(animationEndDate).getTime()) return false;
+    return true;
+  }).sort((a,b) => a[0] - b[0]);
+
+  // Animation playback effect
+  useEffect(() => {
+    if (isPlaying && animationRows.length > 0) {
+      animationIntervalRef.current = setInterval(() => {
+        setAnimationIndex((prev) => (prev + 1) % animationRows.length);
+      }, 500);
+    } else {
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+      }
+    }
+    return () => {
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+      }
+    };
+  }, [isPlaying, animationRows]);
+
+  // Current quaternion & timestamp in animation
+  const animationQuaternion: [number, number, number, number] =
+    animationRows.length > 0 && animationIndex < animationRows.length
+      ? [animationRows[animationIndex][1], animationRows[animationIndex][2], animationRows[animationIndex][3], animationRows[animationIndex][4]]
+      : [0, 0, 0, 1];
+
+  const animationTimestamp = animationRows.length > 0 && animationIndex < animationRows.length
+    ? new Date(animationRows[animationIndex][0] * 1000).toLocaleString()
+    : "";
+
+  // Timestamps for main graph xAxis formatter
   const timestamps = filteredRows.map(row =>
     new Date(row[0] * 1000).toLocaleString()
   );
@@ -158,7 +230,7 @@ function App() {
         </Box>
 
         {/* Controls */}
-        <Grid container spacing={2} alignItems="center">
+        <Grid container spacing={2} alignItems="center" mb={4}>
           <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth>
               <InputLabel>Select Egg</InputLabel>
@@ -206,15 +278,43 @@ function App() {
               Download CSV
             </Button>
           </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={openAnimationDialog}
+              disabled={!selectedEggId || rows.length === 0}
+            >
+              View Animation
+            </Button>
+          </Grid>
         </Grid>
 
-        {/* 3D Model */}
-        <Box my={5} sx={{ width: "100%", maxWidth: 500, height: 300, background: "#e0e0e0", borderRadius: 2 }}>
-          <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
-            <ambientLight />
-            <directionalLight position={[3, 3, 3]} />
-            <EggModel quaternion={latestQuaternion} />
-          </Canvas>
+        {/* Top section with static egg model */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 4,
+            mb: 5,
+            flexWrap: "wrap",
+          }}
+        >
+          <Box
+            sx={{
+              width: 500,
+              height: 300,
+              background: "#e0e0e0",
+              borderRadius: 2,
+              flexShrink: 0,
+            }}
+          >
+            <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
+              <ambientLight />
+              <directionalLight position={[3, 3, 3]} />
+              <EggModel quaternion={latestQuaternion} />
+            </Canvas>
+          </Box>
         </Box>
 
         {/* Graphs */}
@@ -315,6 +415,100 @@ function App() {
           <DialogActions>
             <Button onClick={() => setManualOpen(false)}>Close</Button>
           </DialogActions>
+        </Dialog>
+
+        {/* Animation Dialog */}
+        <Dialog open={animationOpen} onClose={() => setAnimationOpen(false)} maxWidth="md" fullWidth>
+          <DialogTitle>
+            Animation Playback
+            <IconButton
+              aria-label="close"
+              onClick={() => setAnimationOpen(false)}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} alignItems="center" mb={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Animation Start Date"
+                  type="datetime-local"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={animationStartDate}
+                  onChange={(e) => {
+                    setAnimationStartDate(e.target.value);
+                    setAnimationIndex(0);
+                  }}
+                  inputProps={{ max: animationEndDate || undefined }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Animation End Date"
+                  type="datetime-local"
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={animationEndDate}
+                  onChange={(e) => {
+                    setAnimationEndDate(e.target.value);
+                    setAnimationIndex(0);
+                  }}
+                  inputProps={{ min: animationStartDate || undefined }}
+                />
+              </Grid>
+            </Grid>
+
+            <Box
+              sx={{
+                width: "100%",
+                height: 300,
+                background: "#e0e0e0",
+                borderRadius: 2,
+                mb: 2,
+              }}
+            >
+              <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
+                <ambientLight />
+                <directionalLight position={[3, 3, 3]} />
+                <EggModel quaternion={animationQuaternion} />
+              </Canvas>
+            </Box>
+
+            <Box mb={2}>
+              <Typography variant="body2" align="center" gutterBottom>
+                {animationTimestamp || "No data in this range"}
+              </Typography>
+              <Slider
+                value={animationIndex}
+                min={0}
+                max={animationRows.length > 0 ? animationRows.length - 1 : 0}
+                onChange={(_, value) => setAnimationIndex(value as number)}
+                disabled={animationRows.length === 0}
+                aria-label="animation position"
+              />
+            </Box>
+
+            <Box display="flex" justifyContent="center" gap={2}>
+              <Button
+                variant="contained"
+                onClick={() => setIsPlaying(!isPlaying)}
+                disabled={animationRows.length === 0}
+                startIcon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+              >
+                {isPlaying ? "Pause" : "Play"}
+              </Button>
+              <Button variant="outlined" onClick={() => setAnimationIndex(0)} disabled={animationRows.length === 0}>
+                Reset
+              </Button>
+            </Box>
+          </DialogContent>
         </Dialog>
       </Box>
     </ThemeProvider>
