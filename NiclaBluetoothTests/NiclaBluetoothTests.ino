@@ -4,10 +4,11 @@
 
 #define SERVICE_NAME "EggcellentImposter"
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
-#define CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
+#define DATA_CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
+#define ID_CHAR_ID "19B10002-E8F2-537E-4F6C-D104768A1214"
 
-#define PHOTO1_ENABLE_PIN 10
-#define PHOTO2_ENABLE_PIN 9
+#define NICLA_ID "N6"
+#define CODE_VERSION "1.0.0"
 
 typedef struct EggStateStruct {
   float qx;
@@ -22,10 +23,10 @@ typedef struct EggStateStruct {
 
 EggState state;
 
-#define BLE_CHAR_PROPS BLERead | BLEWrite | BLENotify
-
 BLEService eggService(SERVICE_UUID);
-BLECharacteristic eggCharacteristic(CHAR_ID, BLE_CHAR_PROPS, sizeof(EggStateStruct), true);
+BLECharacteristic dataEggCharacteristic(DATA_CHAR_ID, BLERead | BLEWrite | BLENotify, sizeof(EggStateStruct), true);
+BLECharacteristic idEggCharacteristic(ID_CHAR_ID, BLERead, NICLA_ID);
+BLECharacteristic versionEggCharacteristic(ID_CHAR_ID, BLERead, CODE_VERSION);
 
 // Sensor Stuff
 Sensor temperature(SENSOR_ID_TEMP);
@@ -78,7 +79,9 @@ void setup() {
 
   BLE.setLocalName(SERVICE_NAME);
   BLE.setAdvertisedService(eggService);
-  eggService.addCharacteristic(eggCharacteristic);
+  eggService.addCharacteristic(dataEggCharacteristic);
+  eggService.addCharacteristic(idEggCharacteristic);
+  eggService.addCharacteristic(versionEggCharacteristic);
 
 
   // add service
@@ -123,16 +126,16 @@ void updateSensors()
   analogRead(A1);
   state.photo2 = average_val * analogRead(A1) + (1-average_val) * state.photo2;
 
-  // Serial.print("min:0\nmax:1024\n");
-  // Serial.print("photo1:");
-  // Serial.println(state.photo1);
-  // Serial.print("photo2:");
-  // Serial.println(state.photo2);
+  Serial.print("min:0\nmax:1024\n");
+  Serial.print("photo1:");
+  Serial.println(state.photo1);
+  Serial.print("photo2:");
+  Serial.println(state.photo2);
 
 
   last_update = millis();
 
-  eggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
+  dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
 
   // Serial.println("Updated Sensors");
 }
