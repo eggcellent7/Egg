@@ -42,7 +42,7 @@ async def connect_to_device(device, advertising_data):
     print("Connecting to address " + device.address)
     
     try:
-        async with BleakClient(device) as client:
+        async with BleakClient(device, timeout = 20) as client:
             print("Connected")
 
             nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
@@ -62,7 +62,7 @@ async def connect_to_device(device, advertising_data):
             connected_addresses.remove(device.address)
     except asyncio.TimeoutError:
         connected_addresses.remove(device.address)
-        print(f"Connection to {address} timed out.")
+        print(f"Connection to {device.address} timed out.")
         
 
 
