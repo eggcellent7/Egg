@@ -8,7 +8,7 @@
 #define ID_CHAR_ID "19B10002-E8F2-537E-4F6C-D104768A1214"
 #define VERSION_CHAR_ID "19B10003-E8F2-537E-4F6C-D104768A1214"
 
-#define NICLA_ID "N4"
+#define NICLA_ID "N5"
 #define CODE_VERSION "1.0.0"
 
 typedef struct EggStateStruct {

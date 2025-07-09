@@ -40,25 +40,29 @@ def update_data(byte_array, service_uuid, nicla_id):
 async def connect_to_device(device, advertising_data):
     connected_addresses.add(device.address)
     print("Connecting to address " + device.address)
+    
+    try:
+        async with BleakClient(device) as client:
+            print("Connected")
 
-    async with BleakClient(device) as client:
-        print("Connected")
+            nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
 
-        nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
-
-        async def notify(sender, data):
-            update_data(data, advertising_data.service_uuids[0], nicla_id)
+            async def notify(sender, data):
+                update_data(data, advertising_data.service_uuids[0], nicla_id)
 
 
-            
-        await client.start_notify(DATA_CHAR_ID, notify)
+                
+            await client.start_notify(DATA_CHAR_ID, notify)
 
-        while (client.is_connected):
-            await asyncio.sleep(1)
+            while (client.is_connected):
+                await asyncio.sleep(1)
 
-        print("end notify")
+            print("end notify")
 
+            connected_addresses.remove(device.address)
+    except asyncio.TimeoutError:
         connected_addresses.remove(device.address)
+        print(f"Connection to {address} timed out.")
         
 
 
