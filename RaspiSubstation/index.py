@@ -57,6 +57,8 @@ async def connect_to_device(device, advertising_data):
             await asyncio.sleep(1)
 
         print("end notify")
+
+        connected_addresses.remove(device.address)
         
 
 
