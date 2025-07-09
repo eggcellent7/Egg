@@ -4,6 +4,8 @@ import base64
 from bleak import BleakScanner
 from bleak import BleakClient
 import time
+import signal
+import sys
 
 SERVICE_NAME    = "EggcellentImposter"
 SERVICE_UUID    = "19B10000-E8F2-537E-4F6C-D104768A1214"
@@ -14,6 +16,8 @@ VERSION_CHAR_ID = "19B10003-E8F2-537E-4F6C-D104768A1214"
 device_files_path = "./device_files/"
 
 EGG_STATE_STRUCT_STR = "d f f f f f f f f"
+
+stopped = False
 
 connected_addresses = set()
 
@@ -28,7 +32,7 @@ def update_data(byte_array, service_uuid, nicla_id):
         f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
         f.close()
 
-    if (False):
+    if (stopped):
        return
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
@@ -42,7 +46,7 @@ async def connect_to_device(device, advertising_data):
     print("Connecting to address " + device.address)
     
     try:
-        async with BleakClient(device, timeout = 20) as client:
+        async with BleakClient(device, timeout = 40) as client:
             print("Connected")
 
             nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
@@ -60,6 +64,8 @@ async def connect_to_device(device, advertising_data):
             print("end notify")
 
             connected_addresses.remove(device.address)
+
+        print(f"Disconnected from {device.address}")
     except asyncio.TimeoutError:
         connected_addresses.remove(device.address)
         print(f"Connection to {device.address} timed out.")
@@ -67,7 +73,16 @@ async def connect_to_device(device, advertising_data):
 
 
 async def main():
+    global stopped
     stop_event = asyncio.Event()
+
+    def handle_signal(signum, frame):
+        print(f"Received signal {signum}, shutting down…")
+        stopped = True
+        stop_event.set()
+
+    signal.signal(signal.SIGINT, handle_signal)
+    signal.signal(signal.SIGTERM, handle_signal)
 
     # TODO: add something that calls stop_event.set()
 
