@@ -6,8 +6,9 @@
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
 #define DATA_CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
 #define ID_CHAR_ID "19B10002-E8F2-537E-4F6C-D104768A1214"
+#define VERSION_CHAR_ID "19B10003-E8F2-537E-4F6C-D104768A1214"
 
-#define NICLA_ID "N6"
+#define NICLA_ID "N4"
 #define CODE_VERSION "1.0.0"
 
 typedef struct EggStateStruct {
@@ -26,7 +27,7 @@ EggState state;
 BLEService eggService(SERVICE_UUID);
 BLECharacteristic dataEggCharacteristic(DATA_CHAR_ID, BLERead | BLEWrite | BLENotify, sizeof(EggStateStruct), true);
 BLECharacteristic idEggCharacteristic(ID_CHAR_ID, BLERead, NICLA_ID);
-BLECharacteristic versionEggCharacteristic(ID_CHAR_ID, BLERead, CODE_VERSION);
+BLECharacteristic versionEggCharacteristic(VERSION_CHAR_ID, BLERead, CODE_VERSION);
 
 // Sensor Stuff
 Sensor temperature(SENSOR_ID_TEMP);
@@ -81,7 +82,7 @@ void setup() {
   BLE.setAdvertisedService(eggService);
   eggService.addCharacteristic(dataEggCharacteristic);
   eggService.addCharacteristic(idEggCharacteristic);
-  eggService.addCharacteristic(versionEggCharacteristic);
+  // eggService.addCharacteristic(versionEggCharacteristic);
 
 
   // add service
@@ -126,11 +127,11 @@ void updateSensors()
   analogRead(A1);
   state.photo2 = average_val * analogRead(A1) + (1-average_val) * state.photo2;
 
-  Serial.print("min:0\nmax:1024\n");
-  Serial.print("photo1:");
-  Serial.println(state.photo1);
-  Serial.print("photo2:");
-  Serial.println(state.photo2);
+  // Serial.print("min:0\nmax:1024\n");
+  // Serial.print("photo1:");
+  // Serial.println(state.photo1);
+  // Serial.print("photo2:");
+  // Serial.println(state.photo2);
 
 
   last_update = millis();
@@ -147,11 +148,6 @@ void loop() {
 
 
   // if a central is connected to peripheral:
-
-  unsigned long time = millis();
-  if (time - last_update > SENSOR_UPDATE_PERIOD)
-    updateSensors();
-
   if (central) {
 
     Serial.print(F("Connected to central: "));
