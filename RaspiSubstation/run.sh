@@ -1,6 +1,6 @@
-echo "Running"
-
 #!/bin/bash
+
+echo "Running"
 
 # Kill background jobs on Ctrl+C
 trap 'echo "Stopping..."; kill 0' SIGINT

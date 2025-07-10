@@ -25,7 +25,7 @@ const db = admin.firestore();
 const devices_col = db.collection("substations")
 const eggs_col = db.collection("eggs")
 
-const data_threshold = 100;
+const data_threshold = 40;
 
 
 console.log("index.js is running");
@@ -102,6 +102,8 @@ watch(device_files_path, async (eventType, filename) => {
 	const parsed_path = parse(file_path);
 	const egg_id = parsed_path.name;
 
+	console.log("Wtached file")
+
 	if (extname(filename) != ".egg")
 		return;
 	
@@ -136,8 +138,11 @@ watch(device_files_path, async (eventType, filename) => {
 		eggs[filename] = ''
 	eggs[filename] += fileData
 
+	console.log("Added data")
+
 
 	if (eggWrites[filename] >= data_threshold) {
+		console.log("Attempt to add");
 		try {
 			const docRef = await egg_cols[egg_id].add({
 				filename: filename,
