@@ -14,7 +14,7 @@
 #define CODE_VERSION "1.0.0"
 
 typedef struct EggStateStruct {
-  short index;
+  short battery;
   short qx;
   short qy;
   short qz;
@@ -37,10 +37,11 @@ BLECharacteristic startTransferEggCharacteristic(START_TRANSFER_CHAR_ID, BLEWrit
 Sensor temperature(SENSOR_ID_TEMP);
 float temperatureValue = 0;
 
-const unsigned long SENSOR_UPDATE_PERIOD = 20 * 1000; // 60 seeconds
+const unsigned long SENSOR_UPDATE_PERIOD = 60 * 1000; // 60 seeconds
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 SensorBSEC bsec(SENSOR_ID_BSEC);
+Sensor humidity(SENSOR_ID_HUM_WU);
 
 int start_transfer = 0;
 
@@ -94,7 +95,7 @@ void updateSensors()
 {
   state.temp = (short) (temperature.value() * 50);
 
-  state.humidity = (short) (bsec.comp_h() * 50);
+  state.humidity = (short) (humidity.value() * 50);
 
   state.qx = (short) (quaternion.x() * 32767);
   state.qy = (short) (quaternion.y() * 32767);
@@ -108,6 +109,8 @@ void updateSensors()
   analogRead(A1);
   analogRead(A1);
   state.photo2 = analogRead(A1);
+
+  state.battery = nicla::getCurrentBatteryVoltage() * 100;
 }
 
 void pollSensors()
@@ -119,10 +122,10 @@ void pollSensors()
 
   temperature.begin(10);
   quaternion.begin(10);
-  bsec.begin(10);
+  humidity.begin(10);
 
   unsigned long t = millis();
-  while (temperature.value() == 0.0 || bsec.comp_h() == 0 || quaternion.x() == 0)
+  while (temperature.value() == 0.0 || humidity.value() == 0 || quaternion.x() == 0)
   {
     BHY2.update();
     central.connected();
@@ -149,13 +152,9 @@ void setup() {
   Serial.begin(115200);
 
   while (!Serial);
-
   Serial.println("Wokeup");
 
   delay(SENSOR_UPDATE_PERIOD);
-
-  Serial.println(sizeof(short));
-  Serial.println(sizeof(EggState));
 
   turnOnBLE();
 
@@ -181,7 +180,6 @@ void setup() {
 
       pollSensors();
       dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
-      waitConnected(10000);
       central.disconnect();
       Serial.println("Disconnect");
       delay(100); // not sure if this is needed

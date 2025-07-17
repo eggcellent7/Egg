@@ -23,8 +23,6 @@ stopped = False
 connected_addresses = set()
 
 def update_data(byte_array, service_uuid, nicla_id):
-    print("Got data")
-    print(byte_array)
     # Adding timestamp as first 
     t = float(time.time())
     time_stamp_bytes = struct.pack("d", t)
@@ -35,7 +33,6 @@ def update_data(byte_array, service_uuid, nicla_id):
         f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
         f.close()
 
-    print("Data Len: "+str(len(byte_array)))
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
     print("Unpacked Data for "+nicla_id)
     print(unpacked_data)
@@ -72,9 +69,9 @@ async def connect_to_device(device, advertising_data):
             connected_addresses.remove(device.address)
 
         print(f"Disconnected from {device.address}")
-    except asyncio.TimeoutError:
+    except Exception as e:
+        print(f"Failed to connect to device: {e}")
         connected_addresses.remove(device.address)
-        print(f"Connection to {device.address} timed out.")
         
 
 
@@ -99,8 +96,6 @@ async def main():
         if (device.address in connected_addresses):
             return
 
-        print("Found another egg")
-
         await connect_to_device(device, advertising_data)
 
 
@@ -110,7 +105,7 @@ async def main():
         # Important! Wait for an event to trigger stop, otherwise scanner
         # will stop immediately.
         await stop_event.wait()
-        print("Scan stopp")
+        print("Stop Bleak Scan")
 
     # scanner stops when block exits
     ...
