@@ -11,7 +11,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Grid,
   TextField,
   Dialog,
   DialogTitle,
@@ -21,6 +20,7 @@ import {
   Button,
   Slider,
 } from "@mui/material";
+import Grid from '@mui/material/Grid';
 import CloseIcon from "@mui/icons-material/Close";
 import InfoIcon from "@mui/icons-material/Info";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -88,6 +88,8 @@ function App() {
                 .split(":")
                 .filter(Boolean)
                 .map(decodeBase64ToFloat64ThenFloats);
+
+              console.log("Decoded Row Example:", decodedChunks[0]);
 
               decodedEntries.push(...decodedChunks);
             }
@@ -200,11 +202,7 @@ function App() {
     const csvRows = [header.join(",")];
 
     filteredRows.forEach((row) => {
-      // Export in ISO but converted to Central Time ISO-like string
       const dt = new Date(row[0] * 1000);
-      // We want the ISO but adjusted for Central Time, so we build it manually:
-      // Note: JS Date doesn't directly convert ISO to other TZ, so we use toLocaleString parts:
-      // For simplicity, just export UTC ISO string but you can customize if needed:
       const timestamp = dt.toISOString(); // leave as UTC ISO here
       const values = row.slice(1).map((val) =>
         typeof val === "number" ? val.toFixed(6) : val
@@ -241,7 +239,7 @@ function App() {
 
         {/* Controls */}
         <Grid container spacing={2} alignItems="center" mb={4}>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{xs:12, sm:6, md:4}}>
             <FormControl fullWidth>
               <InputLabel>Select Egg</InputLabel>
               <Select
@@ -257,7 +255,7 @@ function App() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid size={{xs: 6, sm: 3, md:2}}>
             <TextField
               label="Start Date"
               type="datetime-local"
@@ -267,7 +265,7 @@ function App() {
               onChange={(e) => setStartDate(e.target.value)}
             />
           </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid size={{xs: 6, sm: 3, md:2}}>
             <TextField
               label="End Date"
               type="datetime-local"
@@ -277,7 +275,7 @@ function App() {
               onChange={(e) => setEndDate(e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{xs: 6, sm: 3, md:2}}>
             <Button
               variant="contained"
               fullWidth
@@ -288,7 +286,7 @@ function App() {
               Download CSV
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6} md={2}>
+          <Grid size={{xs: 6, sm: 3, md:2}}>
             <Button
               variant="contained"
               fullWidth
@@ -334,7 +332,7 @@ function App() {
             const dataPoints = filteredRows.map(row => row[fieldIndex + 1]);
 
             return (
-              <Grid item xs={12} sm={6} md={4} key={field}>
+              <Grid size={{xs: 12, sm: 6, md:4}}key={field}>
                 <Typography variant="subtitle1" gutterBottom>{field}</Typography>
                 <LineChart
                   width={300}
@@ -342,12 +340,12 @@ function App() {
                   xAxis={[
                     {
                       data: filteredRows.map((_, i) => i),
-                      valueFormatter: (val) => {
+                      valueFormatter: (val: any) => {
                         const idx = typeof val === "number" ? val : parseInt(val);
                         return timestamps[idx] || "";
                       },
                       tickLabelStyle: { display: "none" },
-                      axisLine: { strokeWidth: 0 },
+                      //axisLine: { strokeWidth: 0 },
                       tickMinStep: 1,
                     }
                   ]}
@@ -377,7 +375,7 @@ function App() {
                   xAxis={[
                     {
                       data: filteredRows.map((_, i) => i),
-                      valueFormatter: (val) => {
+                      valueFormatter: (val: any) => {
                         const idx = typeof val === "number" ? val : parseInt(val);
                         return timestamps[idx] || "";
                       },
@@ -386,7 +384,7 @@ function App() {
                         textAnchor: "end",
                         fontSize: 10,
                       },
-                      minStep: 1,
+                      //minStep: 1,
                     }
                   ]}
                   series={[
@@ -445,7 +443,7 @@ function App() {
           </DialogTitle>
           <DialogContent>
             <Grid container spacing={2} alignItems="center" mb={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{xs: 12, sm: 6}}>
                 <TextField
                   label="Animation Start Date"
                   type="datetime-local"
@@ -459,7 +457,7 @@ function App() {
                   inputProps={{ max: animationEndDate || undefined }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{xs: 12, sm: 6}}>
                 <TextField
                   label="Animation End Date"
                   type="datetime-local"
