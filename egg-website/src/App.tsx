@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { db } from "./firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
-import { decodeBase64ToFloat64ThenFloats } from "./utils/base64Decoder";
+import { decodeBase64SensorChunk } from "./utils/base64Decoder";
 import { LineChart } from "@mui/x-charts/LineChart";
 import {
   Typography,
@@ -30,7 +30,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { Canvas } from "@react-three/fiber";
 import EggModel from "./EggModel";
 
-const fieldNames = ["qx", "qy", "qz", "qw", "temp", "humidity", "photo1", "photo2"];
+const fieldNames = ["qx", "qy", "qz", "qw", "Temperature", "Humidity", "Light1", "Light2", "Voltage"];
 const graphedFields = fieldNames.slice(4);
 
 const lightTheme = createTheme({
@@ -69,12 +69,12 @@ function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const eggsSnapshot = await getDocs(collection(db, "eggs"));
+        const eggsSnapshot = await getDocs(collection(db, "eggs2"));
         const grouped: Record<string, any[][]> = {};
 
         for (const eggDoc of eggsSnapshot.docs) {
           const eggId = eggDoc.id;
-          const datapointsRef = collection(db, "eggs", eggId, "datapoints");
+          const datapointsRef = collection(db, "eggs2", eggId, "datapoints");
           const datapointsSnapshot = await getDocs(datapointsRef);
 
           const decodedEntries: any[][] = [];
@@ -87,7 +87,7 @@ function App() {
               const decodedChunks = raw
                 .split(":")
                 .filter(Boolean)
-                .map(decodeBase64ToFloat64ThenFloats);
+                .map(decodeBase64SensorChunk);
 
               console.log("Decoded Row Example:", decodedChunks[0]);
 
@@ -407,17 +407,12 @@ function App() {
             <Typography gutterBottom>
               <strong>Replacing the Battery</strong>
               <br />
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor.
+              You need to replace the battery when the board stops sending data to the website, or if the battery life data shows that the battery's voltage is lower than 3.3V. To change the battery, remove the egg from the nest, unscrew the egg, remove the electronics, carefully remove the coin cell battery, and replace it with another 3.7V coin cell battery. After doing so, place the electronics in the same orientation that you took them out in.
             </Typography>
             <Typography gutterBottom>
-              <strong>Making More Eggs</strong>
+              <strong>Additional Info</strong>
               <br />
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce euismod consequat ante.
-            </Typography>
-            <Typography gutterBottom>
-              <strong>Additional Setup</strong>
-              <br />
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean commodo ligula eget dolor.
+              If there are any other issues with egg, and the battery doesn't need replacing, please contact eggcellentimposters@gmail.com
             </Typography>
           </DialogContent>
           <DialogActions>
