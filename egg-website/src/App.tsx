@@ -344,7 +344,7 @@ function App() {
                         const idx = typeof val === "number" ? val : parseInt(val);
                         return timestamps[idx] || "";
                       },
-                      tickLabelStyle: { display: "none" },
+                      tickLabelStyle: { },
                       //axisLine: { strokeWidth: 0 },
                       tickMinStep: 1,
                     }

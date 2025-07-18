@@ -2,6 +2,7 @@
 #include "Arduino_BHY2.h"
 #include <ArduinoBLE.h>
 #include "Wire.h"
+#include "nrf.h"
 
 #define SERVICE_NAME "EggcellentImposter"
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
@@ -10,8 +11,10 @@
 #define START_TRANSFER_CHAR_ID "19B10003-E8F2-537E-4F6C-D104768A1214"
 #define VERSION_CHAR_ID "19B10004-E8F2-537E-4F6C-D104768A1214"
 
-#define NICLA_ID "N4"
+#define NICLA_ID "N5L"
 #define CODE_VERSION "1.0.0"
+
+#define SECONDS_TO_TICKS(s) ((s) * 32768UL)
 
 typedef struct EggStateStruct {
   short battery;
@@ -56,7 +59,7 @@ unsigned long time_since(unsigned long current, unsigned long last)
 void turnOnBLE()
 {
   if (!BLE.begin()) {
-    Serial.println("starting Bluetooth Low Energy module failed!");
+    // Serial.println("starting Bluetooth Low Energy module failed!");
     while (1);
   }
 
@@ -69,7 +72,7 @@ void turnOnBLE()
 
   startTransferEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
     start_transfer = 1;
-    Serial.println("Start Transfer");
+    // Serial.println("Start Transfer");
   });
 
 
@@ -130,12 +133,16 @@ void pollSensors()
     BHY2.update();
     central.connected();
   }
-  Serial.print("Time took:");
-  Serial.println(millis() - t);
+  // Serial.print("Time took:");
+  // Serial.println(millis() - t);
 
 
 
   updateSensors();
+
+  temperature.end();
+  quaternion.end();
+  humidity.end();
 }
 
 void waitConnected(unsigned long t)
@@ -147,18 +154,26 @@ void waitConnected(unsigned long t)
   }
 }
 
+void empty(char * str)
+{
+
+}
+
 void setup() {
 
-  Serial.begin(115200);
+  // Serial.begin(115200);
 
-  while (!Serial);
-  Serial.println("Wokeup");
+  digitalWrite(P0_16, LOW);  // turn off sensor hub
+  BLE.end();
+
+  // while (!Serial);
+  // Serial.println("Wokeup");
 
   delay(SENSOR_UPDATE_PERIOD);
 
   turnOnBLE();
 
-  Serial.println("BLE On");
+  // Serial.println("BLE On");
 
   // Attempt to keep reconnecting until it works
   while (true)
@@ -181,7 +196,8 @@ void setup() {
       pollSensors();
       dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
       central.disconnect();
-      Serial.println("Disconnect");
+      BLE.end();
+      // Serial.println("Disconnect");
       delay(100); // not sure if this is needed
       NVIC_SystemReset();
 
