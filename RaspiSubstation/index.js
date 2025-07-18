@@ -23,16 +23,16 @@ const app = admin.initializeApp({
 const db = admin.firestore();
 
 const devices_col = db.collection("substations")
-const eggs_col = db.collection("eggs")
+const eggs_col = db.collection("eggs2")
 
-const data_threshold = 40;
+const data_threshold = 10;
 
 
-console.log("index.js is running");
+logger.log("index.js is running");
 
 const device_name = readFileSync(device_name_path);
 
-console.log("Device name "+device_name)
+logger.log("Device name "+device_name)
 
 const device_doc_ref = devices_col.doc(""+device_name);
 
@@ -102,8 +102,6 @@ watch(device_files_path, async (eventType, filename) => {
 	const parsed_path = parse(file_path);
 	const egg_id = parsed_path.name;
 
-	console.log("Wtached file")
-
 	if (extname(filename) != ".egg")
 		return;
 	
@@ -138,11 +136,9 @@ watch(device_files_path, async (eventType, filename) => {
 		eggs[filename] = ''
 	eggs[filename] += fileData
 
-	console.log("Added data")
 
 
 	if (eggWrites[filename] >= data_threshold) {
-		console.log("Attempt to add");
 		try {
 			const docRef = await egg_cols[egg_id].add({
 				filename: filename,
@@ -155,7 +151,7 @@ watch(device_files_path, async (eventType, filename) => {
 			eggs[filename] = '';
 			eggWrites[filename] = 0;
 		} catch (e) {
-			console.error("Error uploading to Firestore:", e);
+			logger.error("Error uploading to Firestore:", e);
 		}
 }
 	// Clear the file

@@ -503,7 +503,7 @@
       "plot": "output",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "EggPCB.step",
       "svg": "",
       "vrml": ""
     },

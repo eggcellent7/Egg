@@ -11,11 +11,12 @@ SERVICE_NAME    = "EggcellentImposter"
 SERVICE_UUID    = "19B10000-E8F2-537E-4F6C-D104768A1214"
 DATA_CHAR_ID    = "19B10001-E8F2-537E-4F6C-D104768A1214"
 ID_CHAR_ID      = "19B10002-E8F2-537E-4F6C-D104768A1214"
-VERSION_CHAR_ID = "19B10003-E8F2-537E-4F6C-D104768A1214"
+START_TRANSFER_CHAR_ID = "19B10003-E8F2-537E-4F6C-D104768A1214"
+VERSION_CHAR_ID = "19B10004-E8F2-537E-4F6C-D104768A1214"
 
 device_files_path = "./device_files/"
 
-EGG_STATE_STRUCT_STR = "d f f f f f f f f"
+EGG_STATE_STRUCT_STR = "d h h h h h h h h h"
 
 stopped = False
 
@@ -31,9 +32,6 @@ def update_data(byte_array, service_uuid, nicla_id):
     with open(device_files_path + nicla_id + ".egg", "a") as f:
         f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
         f.close()
-
-    if (stopped):
-       return
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
     print("Unpacked Data for "+nicla_id)
@@ -51,12 +49,17 @@ async def connect_to_device(device, advertising_data):
 
             nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
 
+            print("Nicla ID: "+nicla_id)
+
             async def notify(sender, data):
                 update_data(data, advertising_data.service_uuids[0], nicla_id)
 
 
                 
             await client.start_notify(DATA_CHAR_ID, notify)
+
+            await client.write_gatt_char(START_TRANSFER_CHAR_ID, 1, True)
+            print("Started Transfer")
 
             while (client.is_connected):
                 await asyncio.sleep(1)
@@ -66,9 +69,9 @@ async def connect_to_device(device, advertising_data):
             connected_addresses.remove(device.address)
 
         print(f"Disconnected from {device.address}")
-    except asyncio.TimeoutError:
+    except Exception as e:
+        print(f"Failed to connect to device: {e}")
         connected_addresses.remove(device.address)
-        print(f"Connection to {device.address} timed out.")
         
 
 
@@ -93,8 +96,6 @@ async def main():
         if (device.address in connected_addresses):
             return
 
-        print("Found another egg")
-
         await connect_to_device(device, advertising_data)
 
 
@@ -104,7 +105,7 @@ async def main():
         # Important! Wait for an event to trigger stop, otherwise scanner
         # will stop immediately.
         await stop_event.wait()
-        print("Scan stopp")
+        print("Stop Bleak Scan")
 
     # scanner stops when block exits
     ...
