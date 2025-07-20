@@ -25,7 +25,7 @@ const db = admin.firestore();
 const devices_col = db.collection("substations")
 const eggs_col = db.collection("eggs2")
 
-const data_threshold = 10;
+const data_threshold = 5;
 
 
 logger.log("index.js is running");

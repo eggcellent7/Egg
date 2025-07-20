@@ -16,6 +16,8 @@
 
 #define SECONDS_TO_TICKS(s) ((s) * 32768UL)
 
+const unsigned long BLE_TIMEOUT = (20*1000);
+
 typedef struct EggStateStruct {
   short battery;
   short qx;
@@ -40,7 +42,7 @@ BLECharacteristic startTransferEggCharacteristic(START_TRANSFER_CHAR_ID, BLEWrit
 Sensor temperature(SENSOR_ID_TEMP);
 float temperatureValue = 0;
 
-const unsigned long SENSOR_UPDATE_PERIOD = 60 * 1000; // 60 seeconds
+const unsigned long SENSOR_UPDATE_PERIOD = 300 * 1000; // 5 minutes
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 SensorBSEC bsec(SENSOR_ID_BSEC);
@@ -53,7 +55,7 @@ BLEDevice central;
 // To avoid millis() wrapping messing things up
 unsigned long time_since(unsigned long current, unsigned long last)
 {
-  return current>last? (current - last):(ULONG_MAX - last + current);
+  return current>=last? (current - last):(ULONG_MAX - last + current);
 }
 
 void turnOnBLE()
@@ -72,7 +74,6 @@ void turnOnBLE()
 
   startTransferEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
     start_transfer = 1;
-    // Serial.println("Start Transfer");
   });
 
 
@@ -132,6 +133,9 @@ void pollSensors()
   {
     BHY2.update();
     central.connected();
+
+    if (time_since(millis(), t) > 5*1000)
+      shutdown();
   }
   // Serial.print("Time took:");
   // Serial.println(millis() - t);
@@ -145,28 +149,17 @@ void pollSensors()
   humidity.end();
 }
 
-void waitConnected(unsigned long t)
+void shutdown()
 {
-  unsigned long start = millis();
-  while (time_since(millis(), start) < t && central.connected())
-  {
-    delay(1);
-  }
-}
-
-void empty(char * str)
-{
-
+  BLE.end();
+  digitalWrite(P0_16, LOW);  // turn off sensor hub
+  NVIC_SystemReset();
 }
 
 void setup() {
 
-  // Serial.begin(115200);
-
   digitalWrite(P0_16, LOW);  // turn off sensor hub
   BLE.end();
-
-  // while (!Serial);
   // Serial.println("Wokeup");
 
   delay(SENSOR_UPDATE_PERIOD);
@@ -176,35 +169,39 @@ void setup() {
   // Serial.println("BLE On");
 
   // Attempt to keep reconnecting until it works
-  while (true)
+  unsigned long BLE_START = millis();
+
+  while(true)
   {
-    while(true)
-    {
-      delay(10);
-      central = BLE.central();
-      if (central)
-        break;
-    }
+    delay(10);
+    central = BLE.central();
 
-    unsigned long last_transfer = 0;
+    if (time_since(millis(), BLE_START) > BLE_TIMEOUT)
+      shutdown();
 
-    // while the central is still connected to peripheral:
-    while (central.connected()) {
-      if (!start_transfer)
-        continue;
+    if (central)
+      break;
+  }
 
-      pollSensors();
-      dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
-      central.disconnect();
-      BLE.end();
-      // Serial.println("Disconnect");
-      delay(100); // not sure if this is needed
-      NVIC_SystemReset();
+  BLE_START = millis();
 
-    }
+  // while the central is still connected to peripheral:
+  while (central.connected()) {
+    if (time_since(millis(), BLE_START) > BLE_TIMEOUT)
+      shutdown();
+      
+
+    if (!start_transfer)
+      continue;
+
+    pollSensors();
+    dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
+    central.disconnect();
+    shutdown();
+    break;
   }
 }
 
 void loop() {
-
+  shutdown();
 }
