@@ -662,7 +662,7 @@ function App() {
             <Typography gutterBottom>
               <strong>Additional Info</strong>
               <br />
-              If there are any other issues with egg, and the battery doesn't need replacing, please contact eggcellentimposters@gmail.com
+              If there are any other issues with egg, and the battery doesn't need replacing, please refer to our troubleshooting document: <a href="https://docs.google.com/document/d/19CBC4rIUEdT4I1EIvMb0IMWKUA1XhVZScopWvVigAXk/edit?tab=t.0">link</a>
             </Typography>
           </DialogContent>
           <DialogActions>
