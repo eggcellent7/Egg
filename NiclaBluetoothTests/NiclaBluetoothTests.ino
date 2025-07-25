@@ -11,11 +11,10 @@
 #define START_TRANSFER_CHAR_ID "19B10003-E8F2-537E-4F6C-D104768A1214"
 #define VERSION_CHAR_ID "19B10004-E8F2-537E-4F6C-D104768A1214"
 
-#define NICLA_ID "N5L"
+#define NICLA_ID "N4"
 #define CODE_VERSION "1.0.0"
 
-#define SECONDS_TO_TICKS(s) ((s) * 32768UL)
-
+const unsigned long SENSOR_UPDATE_PERIOD = 300 * 1000; // 5 minutes
 const unsigned long BLE_TIMEOUT = (20*1000);
 
 typedef struct EggStateStruct {
@@ -41,8 +40,6 @@ BLECharacteristic startTransferEggCharacteristic(START_TRANSFER_CHAR_ID, BLEWrit
 // Sensor Stuff
 Sensor temperature(SENSOR_ID_TEMP);
 float temperatureValue = 0;
-
-const unsigned long SENSOR_UPDATE_PERIOD = 300 * 1000; // 5 minutes
 
 SensorQuaternion quaternion(SENSOR_ID_RV);
 SensorBSEC bsec(SENSOR_ID_BSEC);
