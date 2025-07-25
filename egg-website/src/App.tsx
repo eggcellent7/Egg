@@ -657,7 +657,7 @@ function App() {
             <Typography gutterBottom>
               <strong>Replacing the Battery</strong>
               <br />
-              You need to replace the battery when the board stops sending data to the website, or if the battery life data shows that the battery's voltage is lower than 3.3V. To change the battery, remove the egg from the nest, unscrew the egg, remove the electronics, carefully remove the coin cell battery, and replace it with another 3.7V coin cell battery. After doing so, place the electronics in the same orientation that you took them out in.
+              You need to replace the battery when the board stops sending data to the website. To change the battery, remove the egg from the nest, unscrew the egg, remove the electronics, carefully unplug the 3.7V lithium ion battery, and plug in another charged 3.7V lithium ion battery. After doing so, place the electronics in the same orientation that you took them out in.
             </Typography>
             <Typography gutterBottom>
               <strong>Additional Info</strong>
