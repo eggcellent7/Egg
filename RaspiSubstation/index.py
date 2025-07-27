@@ -112,7 +112,10 @@ async def main():
                 stopped = True
 
             # scanner stops when block exits
-        except:
+        except Exception as e:
+            # A general except block to catch any other unhandled exceptions
+            print(f"An unexpected error occurred: {e}")
+            time.sleep(1)
             pass 
 
         if stopped:
