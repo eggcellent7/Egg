@@ -19,6 +19,7 @@ import {
   IconButton,
   Button,
   Slider,
+  Chip,
 } from "@mui/material";
 import Grid from '@mui/material/Grid';
 import CloseIcon from "@mui/icons-material/Close";
@@ -33,6 +34,27 @@ import EggModel from "./EggModel";
 const fieldNames = ["qx", "qy", "qz", "qw", "Temperature", "Humidity", "Light1", "Light2", "Voltage"];
 const graphedFields = fieldNames.slice(4);
 
+// Define units for each field
+const fieldUnits: Record<string, string> = {
+  "Temperature": "°C",
+  "Humidity": "%",
+  "Light1": "lux",
+  "Light2": "lux",
+  "Voltage": "V"
+};
+
+// Date range presets
+const datePresets = [
+  { label: "Last Hour", hours: 1 },
+  { label: "Last 6 Hours", hours: 6 },
+  { label: "Last Day", hours: 24 },
+  { label: "Last 2 Days", hours: 48 },
+  { label: "Last 3 Days", hours: 72 },
+  { label: "Last Week", hours: 168 },
+  { label: "Last 2 Weeks", hours: 336 },
+  { label: "Last Month", hours: 720 },
+];
+
 const lightTheme = createTheme({
   palette: {
     mode: "light",
@@ -44,6 +66,48 @@ const lightTheme = createTheme({
   },
 });
 
+const createChartDataWithGaps = (filteredRows: any[][], fieldIndex: number, gapThresholdMinutes: number = 20): Array<{timestamp: Date, value: number | null}> => {
+  if (filteredRows.length === 0) return [];
+  
+  const chartData = [];
+  const gapThresholdMs = gapThresholdMinutes * 60 * 1000;
+  
+  for (let i = 0; i < filteredRows.length; i++) {
+    const row = filteredRows[i];
+    const currentTimestamp = new Date(row[0] * 1000);
+    
+    // Add the current data point
+    chartData.push({
+      timestamp: currentTimestamp,
+      value: row[fieldIndex + 1]
+    });
+    
+    // Check if there's a gap to the next point
+    if (i < filteredRows.length - 1) {
+      const nextRow = filteredRows[i + 1];
+      const nextTimestamp = new Date(nextRow[0] * 1000);
+      const timeDiff = nextTimestamp.getTime() - currentTimestamp.getTime();
+      
+      // If gap is larger than threshold, insert null values to break the line
+      if (timeDiff > gapThresholdMs) {
+        // Insert a null point slightly after current point
+        chartData.push({
+          timestamp: new Date(currentTimestamp.getTime() + 1000), // 1 second after
+          value: null
+        });
+        
+        // Insert a null point slightly before next point
+        chartData.push({
+          timestamp: new Date(nextTimestamp.getTime() - 1000), // 1 second before
+          value: null
+        });
+      }
+    }
+  }
+  
+  return chartData;
+};
+
 function App() {
   const [groupedData, setGroupedData] = useState<Record<string, any[][]>>({});
   const [selectedEggId, setSelectedEggId] = useState<string>("");
@@ -52,17 +116,90 @@ function App() {
   const [expandedField, setExpandedField] = useState<string | null>(null);
   const [manualOpen, setManualOpen] = useState<boolean>(false);
 
+  // Main dashboard preset state
+  const [selectedMainPreset, setSelectedMainPreset] = useState<string | null>(null);
+
   // Animation dialog state
   const [animationOpen, setAnimationOpen] = useState(false);
   const [animationStartDate, setAnimationStartDate] = useState<string>("");
   const [animationEndDate, setAnimationEndDate] = useState<string>("");
   const [animationIndex, setAnimationIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to format timestamp to Central Time
   const formatToCentralTime = (timestampMs: number) => {
     return new Date(timestampMs).toLocaleString("en-US", { timeZone: "America/Chicago" });
+  };
+
+  // Helper to format timestamp for graph display (shorter format)
+  const formatForGraph = (timestampMs: number) => {
+    const date = new Date(timestampMs);
+    return date.toLocaleString("en-US", { 
+      timeZone: "America/Chicago",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  // Helper function to format date for datetime-local inputs
+  const formatForDatetimeLocal = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Helper to apply date preset for main dashboard
+  const applyMainDatePreset = (hours: number) => {
+    const allRows = groupedData[selectedEggId] || [];
+    if (allRows.length === 0) return;
+
+    // Get current time and calculate start time
+    const now = new Date();
+    const startTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
+    
+    // Find the actual data range within our dataset
+    const sortedRows = [...allRows].sort((a, b) => a[0] - b[0]);
+    const datasetStart = new Date(sortedRows[0][0] * 1000);
+    const datasetEnd = new Date(sortedRows[sortedRows.length - 1][0] * 1000);
+    
+    // Use the later of startTime or datasetStart
+    const effectiveStart = startTime > datasetStart ? startTime : datasetStart;
+    // Use the earlier of now or datasetEnd
+    const effectiveEnd = now < datasetEnd ? now : datasetEnd;
+
+    setStartDate(formatForDatetimeLocal(effectiveStart));
+    setEndDate(formatForDatetimeLocal(effectiveEnd));
+  };
+
+  // Helper to apply date preset for animation dialog
+  const applyDatePreset = (hours: number) => {
+    const allRows = groupedData[selectedEggId] || [];
+    if (allRows.length === 0) return;
+
+    // Get current time and calculate start time
+    const now = new Date();
+    const startTime = new Date(now.getTime() - (hours * 60 * 60 * 1000));
+    
+    // Find the actual data range within our dataset
+    const sortedRows = [...allRows].sort((a, b) => a[0] - b[0]);
+    const datasetStart = new Date(sortedRows[0][0] * 1000);
+    const datasetEnd = new Date(sortedRows[sortedRows.length - 1][0] * 1000);
+    
+    // Use the later of startTime or datasetStart
+    const effectiveStart = startTime > datasetStart ? startTime : datasetStart;
+    // Use the earlier of now or datasetEnd
+    const effectiveEnd = now < datasetEnd ? now : datasetEnd;
+
+    setAnimationStartDate(formatForDatetimeLocal(effectiveStart));
+    setAnimationEndDate(formatForDatetimeLocal(effectiveEnd));
+    setAnimationIndex(0);
   };
 
   // Fetch data effect
@@ -139,21 +276,72 @@ function App() {
       : [0, 0, 0, 1];
 
   // Animation dialog functions
-
   const openAnimationDialog = () => {
     const allRows = groupedData[selectedEggId] || [];
     if (allRows.length === 0) return;
 
     // sort oldest first
     const sortedRows = [...allRows].sort((a, b) => a[0] - b[0]);
-    const startISO = new Date(sortedRows[0][0] * 1000).toISOString().slice(0, 16);
-    const endISO = new Date(sortedRows[sortedRows.length - 1][0] * 1000).toISOString().slice(0, 16);
+    const startISO = formatForDatetimeLocal(new Date(sortedRows[0][0] * 1000));
+    const endISO = formatForDatetimeLocal(new Date(sortedRows[sortedRows.length - 1][0] * 1000));
 
     setAnimationStartDate(startISO);
     setAnimationEndDate(endISO);
     setAnimationIndex(0);
     setIsPlaying(false);
+    setSelectedPreset(null);
     setAnimationOpen(true);
+  };
+
+  const closeAnimationDialog = () => {
+    setIsPlaying(false);
+    setAnimationIndex(0);
+    setSelectedPreset(null);
+    if (animationIntervalRef.current) {
+      clearInterval(animationIntervalRef.current);
+      animationIntervalRef.current = null;
+    }
+    setAnimationOpen(false);
+  };
+
+  // Handle main dashboard preset selection
+  const handleMainPresetClick = (preset: typeof datePresets[0]) => {
+    setSelectedMainPreset(preset.label);
+    applyMainDatePreset(preset.hours);
+  };
+
+  // Handle animation preset selection
+  const handlePresetClick = (preset: typeof datePresets[0]) => {
+    setSelectedPreset(preset.label);
+    applyDatePreset(preset.hours);
+  };
+
+  // Handle manual date changes for main dashboard (clear preset selection)
+  const handleMainDateChange = (field: 'start' | 'end', value: string) => {
+    setSelectedMainPreset(null);
+    if (field === 'start') {
+      setStartDate(value);
+    } else {
+      setEndDate(value);
+    }
+  };
+
+  // Handle manual date changes for animation dialog (clear preset selection)
+  const handleAnimationDateChange = (field: 'start' | 'end', value: string) => {
+    setSelectedPreset(null);
+    if (field === 'start') {
+      setAnimationStartDate(value);
+    } else {
+      setAnimationEndDate(value);
+    }
+    setAnimationIndex(0);
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedMainPreset(null);
+    setStartDate("");
+    setEndDate("");
   };
 
   // Filtered rows for animation dialog (chronological order)
@@ -173,11 +361,13 @@ function App() {
     } else {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
       }
     }
     return () => {
       if (animationIntervalRef.current) {
         clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
       }
     };
   }, [isPlaying, animationRows]);
@@ -191,11 +381,6 @@ function App() {
   const animationTimestamp = animationRows.length > 0 && animationIndex < animationRows.length
     ? formatToCentralTime(animationRows[animationIndex][0] * 1000)
     : "";
-
-  // Timestamps for main graph xAxis formatter
-  const timestamps = filteredRows.map(row =>
-    formatToCentralTime(row[0] * 1000)
-  );
 
   const downloadCSV = () => {
     const header = ["timestamp", ...fieldNames];
@@ -224,14 +409,22 @@ function App() {
   return (
     <ThemeProvider theme={lightTheme}>
       <CssBaseline />
-      <Box sx={{ px: "3rem", py: "2rem", width: "100%", boxSizing: "border-box" }}>
+      <Box sx={{ 
+        px: { xs: "1rem", sm: "2rem", md: "3rem" }, 
+        py: { xs: "1rem", sm: "2rem" }, 
+        width: "100%", 
+        boxSizing: "border-box" 
+      }}>
         {/* Header */}
-        <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">Egg Dashboard</Typography>
+        <Box mb={4} display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+          <Typography variant="h4" sx={{ fontSize: { xs: "1.5rem", sm: "2rem", md: "2.125rem" } }}>
+            Egg Dashboard
+          </Typography>
           <Button
             startIcon={<InfoIcon />}
             variant="outlined"
             onClick={() => setManualOpen(true)}
+            size="small"
           >
             User Manual
           </Button>
@@ -239,7 +432,7 @@ function App() {
 
         {/* Controls */}
         <Grid container spacing={2} alignItems="center" mb={4}>
-          <Grid size={{xs:12, sm:6, md:4}}>
+          <Grid size={{xs:12, sm:12, md:6, lg:4}}>
             <FormControl fullWidth>
               <InputLabel>Select Egg</InputLabel>
               <Select
@@ -255,48 +448,81 @@ function App() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{xs: 6, sm: 3, md:2}}>
+          <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
             <TextField
               label="Start Date"
               type="datetime-local"
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => handleMainDateChange('start', e.target.value)}
             />
           </Grid>
-          <Grid size={{xs: 6, sm: 3, md:2}}>
+          <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
             <TextField
               label="End Date"
               type="datetime-local"
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => handleMainDateChange('end', e.target.value)}
             />
           </Grid>
-          <Grid size={{xs: 6, sm: 3, md:2}}>
+          <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
             <Button
               variant="contained"
               fullWidth
               onClick={downloadCSV}
               disabled={filteredRows.length === 0}
-              sx={{ height: "100%" }}
+              sx={{ height: { xs: "48px", sm: "56px" } }}
             >
               Download CSV
             </Button>
           </Grid>
-          <Grid size={{xs: 6, sm: 3, md:2}}>
+          <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
             <Button
               variant="contained"
               fullWidth
               onClick={openAnimationDialog}
               disabled={!selectedEggId || rows.length === 0}
+              sx={{ height: { xs: "48px", sm: "56px" } }}
             >
               View Animation
             </Button>
           </Grid>
         </Grid>
+
+        {/* Date Range Presets */}
+        <Box mb={4}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+            <Typography variant="subtitle1">
+              Quick Date Ranges:
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={clearAllFilters}
+              disabled={!startDate && !endDate && !selectedMainPreset}
+            >
+              Clear Filters
+            </Button>
+          </Box>
+          <Box display="flex" flexWrap="wrap" gap={1}>
+            {datePresets.map((preset) => (
+              <Chip
+                key={preset.label}
+                label={preset.label}
+                onClick={() => handleMainPresetClick(preset)}
+                variant={selectedMainPreset === preset.label ? "filled" : "outlined"}
+                color={selectedMainPreset === preset.label ? "primary" : "default"}
+                size="small"
+                sx={{ cursor: "pointer" }}
+              />
+            ))}
+          </Box>
+        </Box>
 
         {/* Top section with static egg model */}
         <Box
@@ -310,8 +536,9 @@ function App() {
         >
           <Box
             sx={{
-              width: 500,
-              height: 300,
+              width: { xs: "100%", sm: "90%", md: 500 },
+              height: { xs: 250, sm: 300 },
+              maxWidth: 500,
               background: "#e0e0e0",
               borderRadius: 2,
               flexShrink: 0,
@@ -329,29 +556,38 @@ function App() {
         <Grid container spacing={3}>
           {graphedFields.map((field) => {
             const fieldIndex = fieldNames.indexOf(field);
-            const dataPoints = filteredRows.map(row => row[fieldIndex + 1]);
+            const unit = fieldUnits[field] || "";
+            
+            // Create data with actual timestamps for x-axis
+            const chartData = createChartDataWithGaps(filteredRows, fieldIndex);
 
             return (
-              <Grid size={{xs: 12, sm: 6, md:4}}key={field}>
+              <Grid size={{xs: 12, sm: 6, lg: 4}} key={field}>
                 <Typography variant="subtitle1" gutterBottom>{field}</Typography>
-                <LineChart
-                  width={300}
-                  height={130}
-                  xAxis={[
-                    {
-                      data: filteredRows.map((_, i) => i),
-                      valueFormatter: (val: any) => {
-                        const idx = typeof val === "number" ? val : parseInt(val);
-                        return timestamps[idx] || "";
-                      },
-                      tickLabelStyle: { },
-                      //axisLine: { strokeWidth: 0 },
-                      tickMinStep: 1,
-                    }
-                  ]}
-                  series={[{ data: dataPoints, label: field, showMark: false }]}
-                  onClick={() => setExpandedField(field)}
-                />
+                <Box sx={{ width: "100%", overflowX: "auto" }}>
+                  <LineChart
+                    width={Math.min(300, window.innerWidth - 40)}
+                    height={130}
+                    xAxis={[
+                      {
+                        dataKey: 'timestamp',
+                        scaleType: 'time',
+                        valueFormatter: (val: any) => formatForGraph(val.getTime()),
+                        tickLabelStyle: { display: "none" },
+                        label: "Time",
+                      }
+                    ]}
+                    yAxis={[
+                      {
+                        label: unit,
+                        labelStyle: { textAnchor: "middle" },
+                      }
+                    ]}
+                    dataset={chartData}
+                    series={[{ dataKey: 'value', label: field, showMark: false }]}
+                    onClick={() => setExpandedField(field)}
+                  />
+                </Box>
               </Grid>
             );
           })}
@@ -369,32 +605,46 @@ function App() {
             {expandedField && (
               <>
                 <Typography variant="h6" gutterBottom>{expandedField}</Typography>
-                <LineChart
-                  width={700}
-                  height={350}
-                  xAxis={[
-                    {
-                      data: filteredRows.map((_, i) => i),
-                      valueFormatter: (val: any) => {
-                        const idx = typeof val === "number" ? val : parseInt(val);
-                        return timestamps[idx] || "";
-                      },
-                      tickLabelStyle: {
-                        angle: -45,
-                        textAnchor: "end",
-                        fontSize: 10,
-                      },
-                      //minStep: 1,
-                    }
-                  ]}
-                  series={[
-                    {
-                      data: filteredRows.map(row => row[fieldNames.indexOf(expandedField) + 1]),
-                      label: expandedField,
-                      showMark: false,
-                    }
-                  ]}
-                />
+                {(() => {
+                  const fieldIndex = fieldNames.indexOf(expandedField);
+                  const chartData = createChartDataWithGaps(filteredRows, fieldIndex);
+
+                  return (
+                    <LineChart
+                      width={700}
+                      height={400}
+                      margin={{ top: 20, right: 30, bottom: 80, left: 60 }}
+                      xAxis={[
+                        {
+                          dataKey: 'timestamp',
+                          scaleType: 'time',
+                          valueFormatter: (val: any) => formatForGraph(val.getTime()),
+                          tickLabelStyle: {
+                            angle: -45,
+                            textAnchor: "end",
+                            fontSize: 10,
+                          },
+                          label: "Time",
+                          labelStyle: { textAnchor: "middle" },
+                        }
+                      ]}
+                      yAxis={[
+                        {
+                          label: fieldUnits[expandedField] || "",
+                          labelStyle: { textAnchor: "middle" },
+                        }
+                      ]}
+                      dataset={chartData}
+                      series={[
+                        {
+                          dataKey: 'value',
+                          label: expandedField,
+                          showMark: false,
+                        }
+                      ]}
+                    />
+                  );
+                })()}
               </>
             )}
           </Box>
@@ -407,12 +657,12 @@ function App() {
             <Typography gutterBottom>
               <strong>Replacing the Battery</strong>
               <br />
-              You need to replace the battery when the board stops sending data to the website, or if the battery life data shows that the battery's voltage is lower than 3.3V. To change the battery, remove the egg from the nest, unscrew the egg, remove the electronics, carefully remove the coin cell battery, and replace it with another 3.7V coin cell battery. After doing so, place the electronics in the same orientation that you took them out in.
+              You need to replace the battery when the board stops sending data to the website. To change the battery, remove the egg from the nest, unscrew the egg, remove the electronics, carefully unplug the 3.7V lithium ion battery, and plug in another charged 3.7V lithium ion battery. After doing so, place the electronics in the same orientation that you took them out in.
             </Typography>
             <Typography gutterBottom>
               <strong>Additional Info</strong>
               <br />
-              If there are any other issues with egg, and the battery doesn't need replacing, please contact eggcellentimposters@gmail.com
+              If there are any other issues with egg, and the battery doesn't need replacing, please refer to our troubleshooting document: <a href="https://docs.google.com/document/d/19CBC4rIUEdT4I1EIvMb0IMWKUA1XhVZScopWvVigAXk/edit?tab=t.0">link</a>
             </Typography>
           </DialogContent>
           <DialogActions>
@@ -421,12 +671,12 @@ function App() {
         </Dialog>
 
         {/* Animation Dialog */}
-        <Dialog open={animationOpen} onClose={() => setAnimationOpen(false)} maxWidth="md" fullWidth>
+        <Dialog open={animationOpen} onClose={closeAnimationDialog} maxWidth="lg" fullWidth>
           <DialogTitle>
             Animation Playback
             <IconButton
               aria-label="close"
-              onClick={() => setAnimationOpen(false)}
+              onClick={closeAnimationDialog}
               sx={{
                 position: "absolute",
                 right: 8,
@@ -436,19 +686,38 @@ function App() {
               <CloseIcon />
             </IconButton>
           </DialogTitle>
-          <DialogContent>
+          <DialogContent sx={{ px: { xs: 1, sm: 3 } }}>
+            {/* Date Range Presets */}
+            <Box mb={3}>
+              <Typography variant="subtitle2" gutterBottom>
+                Quick Date Ranges:
+              </Typography>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {datePresets.map((preset) => (
+                  <Chip
+                    key={preset.label}
+                    label={preset.label}
+                    onClick={() => handlePresetClick(preset)}
+                    variant={selectedPreset === preset.label ? "filled" : "outlined"}
+                    color={selectedPreset === preset.label ? "primary" : "default"}
+                    size="small"
+                    sx={{ cursor: "pointer" }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            {/* Manual Date Selection */}
             <Grid container spacing={2} alignItems="center" mb={2}>
               <Grid size={{xs: 12, sm: 6}}>
                 <TextField
                   label="Animation Start Date"
                   type="datetime-local"
                   fullWidth
+                  size="small"
                   InputLabelProps={{ shrink: true }}
                   value={animationStartDate}
-                  onChange={(e) => {
-                    setAnimationStartDate(e.target.value);
-                    setAnimationIndex(0);
-                  }}
+                  onChange={(e) => handleAnimationDateChange('start', e.target.value)}
                   inputProps={{ max: animationEndDate || undefined }}
                 />
               </Grid>
@@ -457,12 +726,10 @@ function App() {
                   label="Animation End Date"
                   type="datetime-local"
                   fullWidth
+                  size="small"
                   InputLabelProps={{ shrink: true }}
                   value={animationEndDate}
-                  onChange={(e) => {
-                    setAnimationEndDate(e.target.value);
-                    setAnimationIndex(0);
-                  }}
+                  onChange={(e) => handleAnimationDateChange('end', e.target.value)}
                   inputProps={{ min: animationStartDate || undefined }}
                 />
               </Grid>
@@ -471,7 +738,7 @@ function App() {
             <Box
               sx={{
                 width: "100%",
-                height: 300,
+                height: { xs: 250, sm: 300 },
                 background: "#e0e0e0",
                 borderRadius: 2,
                 mb: 2,
@@ -485,7 +752,12 @@ function App() {
             </Box>
 
             <Box mb={2}>
-              <Typography variant="body2" align="center" gutterBottom>
+              <Typography 
+                variant="body2" 
+                align="center" 
+                gutterBottom
+                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+              >
                 {animationTimestamp || "No data in this range"}
               </Typography>
               <Slider
@@ -498,16 +770,22 @@ function App() {
               />
             </Box>
 
-            <Box display="flex" justifyContent="center" gap={2}>
+            <Box display="flex" justifyContent="center" gap={2} flexWrap="wrap">
               <Button
                 variant="contained"
                 onClick={() => setIsPlaying(!isPlaying)}
                 disabled={animationRows.length === 0}
                 startIcon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                size="small"
               >
                 {isPlaying ? "Pause" : "Play"}
               </Button>
-              <Button variant="outlined" onClick={() => setAnimationIndex(0)} disabled={animationRows.length === 0}>
+              <Button 
+                variant="outlined" 
+                onClick={() => setAnimationIndex(0)} 
+                disabled={animationRows.length === 0}
+                size="small"
+              >
                 Reset
               </Button>
             </Box>
