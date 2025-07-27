@@ -96,8 +96,8 @@ async function init_endpoint()
 
 init_endpoint();
 
-// Watching for changes to files in device_files folder
-watch(device_files_path, async (eventType, filename) => {
+async function uploadFile(filename)
+{
 	const file_path = device_files_path+filename;
 	const parsed_path = parse(file_path);
 	const egg_id = parsed_path.name;
@@ -153,8 +153,29 @@ watch(device_files_path, async (eventType, filename) => {
 		} catch (e) {
 			logger.error("Error uploading to Firestore:", e);
 		}
-}
+	}
+
 	// Clear the file
 	writeFileSync(file_path, "")
+}
 
+fs.readdir(device_files_path, (err, files) => {
+    if (err) {
+		logger.error("Error uploading to file: "+toString(err));
+		return;
+	}
+
+
+	files.forEach(file => {
+		const filePath = path.join(device_files_path, file);
+		if (fs.statSync(filePath).isFile()) {
+			uploadFile(file)
+        }
+    });
+
+});
+
+// Watching for changes to files in device_files folder
+watch(device_files_path, async (eventType, filename) => 
+	uploadFile(filename);
 });

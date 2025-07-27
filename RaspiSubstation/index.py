@@ -91,7 +91,7 @@ async def main():
 
     async def callback(device, advertising_data):
         if (advertising_data.local_name != SERVICE_NAME):
-            return;
+            return
         
         if (device.address in connected_addresses):
             return
@@ -100,14 +100,23 @@ async def main():
 
 
 
-    async with BleakScanner(callback) as scanner:
-        ...
-        # Important! Wait for an event to trigger stop, otherwise scanner
-        # will stop immediately.
-        await stop_event.wait()
-        print("Stop Bleak Scan")
+    while True:
+        try:
+            print("Start Scann")
+            async with BleakScanner(callback) as scanner:
+                ...
+                # Important! Wait for an event to trigger stop, otherwise scanner
+                # will stop immediately.
+                await stop_event.wait()
+                print("Stop Bleak Scan")
+                stopped = True
 
-    # scanner stops when block exits
+            # scanner stops when block exits
+        except:
+            pass 
+
+        if stopped:
+            break
     ...
 
 print("Running python")
