@@ -125,7 +125,8 @@ async def main():
             restart_count += 1
             if restart_count == 5:
                 print("restart")
-                os.system("systemctl restart egg_service.service")
+                stopped = True
+                # os.system("systemctl restart egg_service.service")
             time.sleep(5)
 
         if stopped:
