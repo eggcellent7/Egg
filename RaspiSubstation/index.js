@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, existsSync, watch } from "fs"
+import { readFileSync, writeFileSync, existsSync, watch, readdir, statSync } from "fs"
 import admin  from 'firebase-admin';
-import { extname, parse } from "path"
+import { extname, parse, join } from "path"
 import { logger } from "./logger.js"
 import ActionServer from "./action_server.js"
 import {exec } from "child_process"
@@ -159,7 +159,7 @@ async function uploadFile(filename)
 	writeFileSync(file_path, "")
 }
 
-fs.readdir(device_files_path, (err, files) => {
+readdir(device_files_path, (err, files) => {
     if (err) {
 		logger.error("Error uploading to file: "+toString(err));
 		return;
@@ -167,8 +167,8 @@ fs.readdir(device_files_path, (err, files) => {
 
 
 	files.forEach(file => {
-		const filePath = path.join(device_files_path, file);
-		if (fs.statSync(filePath).isFile()) {
+		const filePath = join(device_files_path, file);
+		if (statSync(filePath).isFile()) {
 			uploadFile(file)
         }
     });
