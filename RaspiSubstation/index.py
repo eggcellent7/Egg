@@ -6,6 +6,7 @@ from bleak import BleakClient
 import time
 import signal
 import sys
+import os
 
 SERVICE_NAME    = "EggcellentImposter"
 SERVICE_UUID    = "19B10000-E8F2-537E-4F6C-D104768A1214"
@@ -104,6 +105,7 @@ async def main():
 
 
     while True:
+        restart_count = 0
         try:
             print("Start Scann")
             async with BleakScanner(callback) as scanner:
@@ -120,7 +122,9 @@ async def main():
             print(f"An unexpected error occurred: {e}")
             print(stopped)
             time.sleep(5)
-            pass 
+            restart_count += 1
+            if restart_count == 5:
+                os.system("systemctl restart egg_service.service")
 
         if stopped:
             break
