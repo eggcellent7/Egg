@@ -80,8 +80,11 @@ async def main():
     stop_event = asyncio.Event()
 
     def handle_signal(signum, frame):
+        global stopped
         print(f"Received signal {signum}, shutting down…")
         stopped = True
+        print("Set stopped to")
+        print(stopped)
         stop_event.set()
 
     signal.signal(signal.SIGINT, handle_signal)
@@ -115,7 +118,8 @@ async def main():
         except Exception as e:
             # A general except block to catch any other unhandled exceptions
             print(f"An unexpected error occurred: {e}")
-            time.sleep(1)
+            print(stopped)
+            time.sleep(5)
             pass 
 
         if stopped:
