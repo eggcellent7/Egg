@@ -176,6 +176,6 @@ fs.readdir(device_files_path, (err, files) => {
 });
 
 // Watching for changes to files in device_files folder
-watch(device_files_path, async (eventType, filename) => 
+watch(device_files_path, async (eventType, filename) => {
 	uploadFile(filename);
 });
