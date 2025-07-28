@@ -104,10 +104,11 @@ async def main():
 
 
 
+    restart_count = 0
     while True:
-        restart_count = 0
         try:
             print("Start Scann")
+            raise ValueError('A very specific bad thing happened.')
             async with BleakScanner(callback) as scanner:
                 ...
                 # Important! Wait for an event to trigger stop, otherwise scanner
@@ -120,11 +121,12 @@ async def main():
         except Exception as e:
             # A general except block to catch any other unhandled exceptions
             print(f"An unexpected error occurred: {e}")
-            print(stopped)
-            time.sleep(5)
+            print(restart_count)
             restart_count += 1
             if restart_count == 5:
-                os.system("systemctl restart egg_service.service")
+                print("restart")
+                # os.system("systemctl restart egg_service.service")
+            time.sleep(5)
 
         if stopped:
             break
