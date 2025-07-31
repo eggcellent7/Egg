@@ -20,15 +20,25 @@ import {
   Slider,
   Chip,
 } from "@mui/material";
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
-import type { SelectChangeEvent } from "@mui/material/Select";
-import { continuousColorLegendClasses } from "@mui/x-charts";
 
 const substation_col_id = "substations"
 
+function parseDeviceTime(t: string)
+{
+    return new Date(parseFloat(t)*1000).toLocaleString()
+}
+
 function SubstationTab()
 {
-    const [selectedStation, setSelectedStation] = useState<string|null>(null)
+    const [selectedStation, setSelectedStation] = useState<string>("")
     const [substations, setSubstations] = useState<{[key: string]: any}>([])
     const [pingData, setPingData] = useState<any>()
 
@@ -70,17 +80,16 @@ function SubstationTab()
                 return response.json(); 
             })
             .then(data => {
-                setPingData(JSON.parse(data))
-                console.log(data)
+                setPingData(data)
+                
             })
             .catch(error => {
                 // Handle any errors that occurred during the fetch operation
-                console.error('Fetch error:', error);
+                console.error('Fetch error: url: '+address+ ": ", error);
             });
     }
 
     useEffect(() => {
-        console.log("effect")
         const interval = setInterval(() => {
             // Attempt to connect through ngrok  and direct connection 
             if (!selectedStation || !substations[selectedStation])
@@ -90,13 +99,14 @@ function SubstationTab()
 
             if ( subData.ngrok_endpoint)
             {
-                console.log("Pinged")
+                console.log("Pinging ngrok")
                 pingForData(subData.ngrok_endpoint)
             }
 
             if ( subData.ip_address )
             {
-                pingForData(subData.ip_address+":8080")
+                console.log("Pinging local")
+                pingForData("http://localhost:8080")
             }
 
 
@@ -106,7 +116,20 @@ function SubstationTab()
         return () => {
             clearInterval(interval);
         }
+        setPingData(null);
     }, [selectedStation, substations])
+
+    const rows: any[] = []
+    if (pingData)
+    {
+        Object.keys(pingData.last_datapoints).map((id) => {
+            const data_string: string = pingData.last_datapoints[id]
+            const row_data = decodeBase64SensorChunk(data_string)
+            row_data.push(id)
+            rows.push(row_data)
+        })
+    }
+    
 
     return <>
         {/* Controls */}
@@ -140,11 +163,58 @@ function SubstationTab()
         </Grid>
 
         {selectedStation && substations[selectedStation] && <Grid container spacing={2} alignItems="center" mb={4}>
-            <InputLabel>IP Address</InputLabel>
-            {substations[selectedStation].ip_address} 
+            <Box mb={2}>
+                <Box mb={2}>
+                    <InputLabel>IP Address</InputLabel>
+                    <div>{substations[selectedStation].ip_address} </div>
+                </Box>
 
-            <InputLabel>Ngrok Endpoint</InputLabel> 
-            {substations[selectedStation].ngrok_endpoint } 
+                <Box mb={2}>
+                    <InputLabel>Ngrok Endpoint</InputLabel> 
+                    <div>{substations[selectedStation].ngrok_endpoint }</div>
+                </Box>
+
+                {pingData && <Box mb={2}>
+                    <InputLabel>Device Time</InputLabel> 
+                    <div>{parseDeviceTime(pingData.datetime)}</div>
+                </Box>}
+
+                <TableContainer component={Paper}>
+                    <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                        <TableHead>
+                        <TableRow>
+                            <TableCell>Eggs</TableCell>
+                            <TableCell align="right">Last timestamp</TableCell>
+                            <TableCell align="right">Temperature&nbsp;(g)</TableCell>
+                            <TableCell align="right">Humidity&nbsp;(g)</TableCell>
+                            <TableCell align="right">Light 1&nbsp;(g)</TableCell>
+                            <TableCell align="right">Light 2&nbsp;(g)</TableCell>
+                            <TableCell align="right">Voltage&nbsp;(g)</TableCell>
+                        </TableRow>
+                        </TableHead>
+                        <TableBody>
+                        {
+                        rows.map((row) => (
+                            <TableRow
+                            key={row[10]}
+                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            >
+                            <TableCell component="th" scope="row">
+                                {row[10]}
+                            </TableCell>
+                            <TableCell align="right">{parseDeviceTime(row[0])}</TableCell>
+                            <TableCell align="right">{row[5]}</TableCell>
+                            <TableCell align="right">{row[6]}</TableCell>
+                            <TableCell align="right">{row[7]}</TableCell>
+                            <TableCell align="right">{row[8]}</TableCell>
+                            <TableCell align="right">{row[9]}</TableCell>
+                            </TableRow>
+                        ))
+                        }
+                        </TableBody>
+                    </Table>
+                    </TableContainer>
+            </Box>
         </Grid>}
     
     </>

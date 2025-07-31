@@ -11,6 +11,7 @@ import http.server
 import ssl
 import json
 from dotenv import load_dotenv
+import threading
 
 load_dotenv()
 
@@ -29,6 +30,8 @@ EGG_STATE_STRUCT_STR = "d h h h h h h h h h"
 stopped = False
 
 connected_addresses = set()
+last_connections = dict()
+last_datapoints = dict()
 
 def update_data(byte_array, service_uuid, nicla_id):
     # Adding timestamp as first 
@@ -36,10 +39,14 @@ def update_data(byte_array, service_uuid, nicla_id):
     time_stamp_bytes = struct.pack("d", t)
     tf = struct.unpack("d", time_stamp_bytes)[0]
     byte_array = time_stamp_bytes + byte_array[:]
+    byte_str = base64.b64encode(byte_array).decode("utf-8")
 
     with open(device_files_path + nicla_id + ".egg", "a") as f:
-        f.write(base64.b64encode(byte_array).decode("utf-8") + ":")
+        f.write(byte_str + ":")
         f.close()
+
+    last_connections[nicla_id] = time.time()
+    last_datapoints[nicla_id] = byte_str
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
     print("Unpacked Data for "+nicla_id)
@@ -158,21 +165,28 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         print(post_data.decode("utf-8"))
 
-    def do_GET(self):
-        self.send_response(200)
-        # Set the content type header
-        self.send_header('Content-type', 'application/json')
+    def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, ngrok-skip-browser-warning')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
+    def do_GET(self):
+        self.send_response(200)
         # End the headers
         self.end_headers()
 
         # Prepare the response data
         response_data = {
-            "message": "Hello from the simple HTTP server!",
+            "datetime": time.time(),
             "method": "GET",
-            "path": self.path
+            "path": self.path,
+            "last_connections": last_connections,
+            "last_datapoints": last_datapoints
         }
         # Encode the response data to JSON and then to bytes
         response_bytes = json.dumps(response_data).encode('utf-8')
@@ -187,6 +201,17 @@ httpd = http.server.HTTPServer(server_address, MyHandler)
 # context = get_ssl_context("cert.pem", "key.pem")
 # httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
-httpd.serve_forever()
+def run_server():
+    httpd.serve_forever()
+
+server_thread = threading.Thread(target=run_server, daemon=True)
+server_thread.start()
+
+print("Running main")
 
 asyncio.run(main())
+
+print("Graceful shutdown")
+
+httpd.shutdown()
+server_thread.join()

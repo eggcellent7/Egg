@@ -11,10 +11,10 @@
 #define START_TRANSFER_CHAR_ID "19B10003-E8F2-537E-4F6C-D104768A1214"
 #define VERSION_CHAR_ID "19B10004-E8F2-537E-4F6C-D104768A1214"
 
-#define NICLA_ID "N3"
+#define NICLA_ID "N5"
 #define CODE_VERSION "1.0.0"
 
-const unsigned long SENSOR_UPDATE_PERIOD = 300 * 1000; // 5 minutes
+const unsigned long SENSOR_UPDATE_PERIOD = 5 * 1000; // 5 minutes
 const unsigned long BLE_TIMEOUT = (20*1000);
 
 typedef struct EggStateStruct {

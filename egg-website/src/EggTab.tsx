@@ -179,7 +179,7 @@ function EggTab()
     };  
     
         fetchData();
-      }, [selectedEggId, startDate, endDate]);
+      }, [startDate, endDate]);
     
       const handleEggChange = (event: SelectChangeEvent<string>) => {
         setSelectedEggId(event.target.value);

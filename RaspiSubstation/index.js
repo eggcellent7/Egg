@@ -79,7 +79,8 @@ async function get_ip_address() {
         })
     })
     try {
-        device_ip = await promise
+        device_ip = (await promise).split(" \n")[0];
+        
         logger.info(`Device IP Address found at ${device_ip}`)
         return true
     } catch(err) {
