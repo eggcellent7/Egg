@@ -4,11 +4,18 @@ import { extname, parse, join } from "path"
 import { logger } from "./logger.js"
 import ActionServer from "./action_server.js"
 import {exec } from "child_process"
+import * as dotenv from "dotenv"
+import { forward as ngforward } from "@ngrok/ngrok"
+
+dotenv.config();
 
 const service_account = JSON.parse(readFileSync("./service_account.json"));
 
 const device_name_path = "./device_name.txt"
 const device_files_path = "./device_files/";
+const device_files_path2 = "./device_files/";
+
+const SERVER_PORT = 8080
 
 const eggWrites = {};
 const eggs = {}
@@ -24,6 +31,8 @@ const db = admin.firestore();
 
 const devices_col = db.collection("substations")
 const eggs_col = db.collection("eggs2")
+
+const action_server = new ActionServer();
 
 const data_threshold = 5;
 
@@ -44,14 +53,14 @@ async function ngrok_setup()
     // Establish connectivity
     let failed = false
     const ngrok_config = { 
-        addr: env.SERVER_PORT, 
+        addr: SERVER_PORT, 
         authtoken_from_env: true, 
         headers: { 'Access-Control-Allow-Origin': `*` } 
     }
     await ngforward(ngrok_config).then((listener) => {
         // Push url onto database
         active_url = listener.url() || undefined
-        logger.info("Ngrok started at %s at port %s", active_url, env.SERVER_PORT)
+        logger.info("Ngrok started at %s at port %s", active_url, process.env.SERVER_PORT)
     }).catch((e) => {
         failed = true
         logger.error(`Ngrok setup failed with error: ${e}`)
@@ -83,7 +92,7 @@ async function get_ip_address() {
 async function init_endpoint()
 {
 
-	// let ngrok_success = await ngrok_setup();
+	let ngrok_success = await ngrok_setup();
 	let ip_address_success = await get_ip_address();
 	device_doc_ref.set({
 		"ngrok_endpoint": active_url,

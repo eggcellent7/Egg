@@ -7,6 +7,13 @@ import time
 import signal
 import sys
 import os
+import http.server
+import ssl
+import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 SERVICE_NAME    = "EggcellentImposter"
 SERVICE_UUID    = "19B10000-E8F2-537E-4F6C-D104768A1214"
@@ -134,5 +141,52 @@ async def main():
     ...
 
 print("Running python")
+
+
+
+
+def get_ssl_context(certfile, keyfile):
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certfile, keyfile)
+    context.set_ciphers("@SECLEVEL=1:ALL")
+    return context
+
+
+class MyHandler(http.server.SimpleHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers["Content-Length"])
+        post_data = self.rfile.read(content_length)
+        print(post_data.decode("utf-8"))
+
+    def do_GET(self):
+        self.send_response(200)
+        # Set the content type header
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        # End the headers
+        self.end_headers()
+
+        # Prepare the response data
+        response_data = {
+            "message": "Hello from the simple HTTP server!",
+            "method": "GET",
+            "path": self.path
+        }
+        # Encode the response data to JSON and then to bytes
+        response_bytes = json.dumps(response_data).encode('utf-8')
+
+        # Write the response body
+        self.wfile.write(response_bytes)
+
+
+server_address = ("127.0.0.1", int(os.getenv("SERVER_PORT")))
+httpd = http.server.HTTPServer(server_address, MyHandler)
+
+# context = get_ssl_context("cert.pem", "key.pem")
+# httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+
+httpd.serve_forever()
 
 asyncio.run(main())
