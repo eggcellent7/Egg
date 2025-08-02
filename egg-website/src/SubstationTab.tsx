@@ -19,6 +19,8 @@ import {
   Button,
   Slider,
   Chip,
+  Stack,
+  Switch,
 } from "@mui/material";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -36,11 +38,22 @@ function parseDeviceTime(t: string)
     return new Date(parseFloat(t)*1000).toLocaleString()
 }
 
+type PingData = {
+    datetime: number,
+    eggs: {[address: string]: {
+        last_connection: number,
+        last_datapoint: string
+        nicla_id: string
+    }}
+};
+
 function SubstationTab()
 {
     const [selectedStation, setSelectedStation] = useState<string>("")
     const [substations, setSubstations] = useState<{[key: string]: any}>([])
-    const [pingData, setPingData] = useState<any>()
+    const [pingData, setPingData] = useState<PingData>()
+    const [connectMethod, setConnectMethod] = useState("NGROK")
+    const [selectedEgg, setSelectedEgg] = useState<string>();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -63,7 +76,7 @@ function SubstationTab()
         fetchData();
     }, []);
 
-    async function pingForData(address: string)
+    async function pingForData(address: string, err: any)
     {
         fetch(address+"/ping", {
             method: "GET",
@@ -86,47 +99,59 @@ function SubstationTab()
             .catch(error => {
                 // Handle any errors that occurred during the fetch operation
                 console.error('Fetch error: url: '+address+ ": ", error);
+                err();
             });
     }
 
     useEffect(() => {
-        const interval = setInterval(() => {
+        function pingAttempt()
+        {
             // Attempt to connect through ngrok  and direct connection 
             if (!selectedStation || !substations[selectedStation])
                 return;
 
             const subData = substations[selectedStation]
-
-            if ( subData.ngrok_endpoint)
-            {
-                console.log("Pinging ngrok")
-                pingForData(subData.ngrok_endpoint)
-            }
-
-            if ( subData.ip_address )
-            {
-                console.log("Pinging local")
-                pingForData("http://localhost:8080")
-            }
-
-
             
-        }, 5000);
+            // Will alternate methods until something works
+            if ( connectMethod == "NGROK") 
+            {
+                if (subData.ngrok_endpoint)
+                {
+                    console.log("Pinging ngrok");
+                    pingForData(subData.ngrok_endpoint, () => setConnectMethod("IP_ADDRESS"));
+                } else {
+                    setConnectMethod("IP_ADDRESS");
+                }
+            } else if (connectMethod == "IP_ADDRESS") {
+                if ( subData.ip_address )
+                {
+                    console.log("Pinging local");
+                    pingForData("http://"+subData.ip_address+":8080", () => setConnectMethod("NGROK"));
+                } else {
+                    setConnectMethod("NGROK");
+                }
+            }
+            
+        }
+
+        const interval = setInterval(pingAttempt, 5000);
+        setTimeout(pingAttempt, 1000); // First ping is quicker
 
         return () => {
             clearInterval(interval);
         }
-        setPingData(null);
-    }, [selectedStation, substations])
+    }, [selectedStation, substations, connectMethod])
 
-    const rows: any[] = []
+    useEffect(() => {
+        setPingData(undefined);
+    }, [selectedStation])
+
+    const rows: {[address: string]: any[]} = {};
     if (pingData)
     {
-        Object.keys(pingData.last_datapoints).map((id) => {
-            const data_string: string = pingData.last_datapoints[id]
-            const row_data = decodeBase64SensorChunk(data_string)
-            row_data.push(id)
-            rows.push(row_data)
+        Object.keys(pingData.eggs).map((address) => {
+            const data_string: string = pingData.eggs[address].last_datapoint
+            rows[address] = decodeBase64SensorChunk(data_string)
         })
     }
     
@@ -176,7 +201,7 @@ function SubstationTab()
 
                 {pingData && <Box mb={2}>
                     <InputLabel>Device Time</InputLabel> 
-                    <div>{parseDeviceTime(pingData.datetime)}</div>
+                    <div>{parseDeviceTime(""+pingData.datetime)}</div>
                 </Box>}
 
                 <TableContainer component={Paper}>
@@ -185,29 +210,31 @@ function SubstationTab()
                         <TableRow>
                             <TableCell>Eggs</TableCell>
                             <TableCell align="right">Last timestamp</TableCell>
-                            <TableCell align="right">Temperature&nbsp;(g)</TableCell>
-                            <TableCell align="right">Humidity&nbsp;(g)</TableCell>
-                            <TableCell align="right">Light 1&nbsp;(g)</TableCell>
-                            <TableCell align="right">Light 2&nbsp;(g)</TableCell>
-                            <TableCell align="right">Voltage&nbsp;(g)</TableCell>
+                            <TableCell align="right">Temperature (c)</TableCell>
+                            <TableCell align="right">Humidity (%)</TableCell>
+                            <TableCell align="right">Light 1</TableCell>
+                            <TableCell align="right">Light 2</TableCell>
+                            <TableCell align="right">Voltage (V)</TableCell>
                         </TableRow>
                         </TableHead>
                         <TableBody>
                         {
-                        rows.map((row) => (
+                        Object.keys(pingData?.eggs || {}).map((address) => (
                             <TableRow
-                            key={row[10]}
+                            key={address}
                             sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            onClick={(_) => setSelectedEgg(address)}
+                            selected={address == selectedEgg}
                             >
                             <TableCell component="th" scope="row">
-                                {row[10]}
+                                {pingData?.eggs[address].nicla_id}
                             </TableCell>
-                            <TableCell align="right">{parseDeviceTime(row[0])}</TableCell>
-                            <TableCell align="right">{row[5]}</TableCell>
-                            <TableCell align="right">{row[6]}</TableCell>
-                            <TableCell align="right">{row[7]}</TableCell>
-                            <TableCell align="right">{row[8]}</TableCell>
-                            <TableCell align="right">{row[9]}</TableCell>
+                            <TableCell align="right">{parseDeviceTime(rows[address][0])}</TableCell>
+                            <TableCell align="right">{rows[address][5]}</TableCell>
+                            <TableCell align="right">{rows[address][6]}</TableCell>
+                            <TableCell align="right">{rows[address][7]}</TableCell>
+                            <TableCell align="right">{rows[address][8]}</TableCell>
+                            <TableCell align="right">{rows[address][9]}</TableCell>
                             </TableRow>
                         ))
                         }

@@ -22,6 +22,7 @@ DATA_CHAR_ID    = "19B10001-E8F2-537E-4F6C-D104768A1214"
 ID_CHAR_ID      = "19B10002-E8F2-537E-4F6C-D104768A1214"
 START_TRANSFER_CHAR_ID = "19B10003-E8F2-537E-4F6C-D104768A1214"
 VERSION_CHAR_ID = "19B10004-E8F2-537E-4F6C-D104768A1214"
+FLOAT_COMMAND_CHAR_ID = "19B10005-E8F2-537E-4F6C-D104768A1214"
 
 device_files_path = "./device_files/"
 
@@ -30,10 +31,12 @@ EGG_STATE_STRUCT_STR = "d h h h h h h h h h"
 stopped = False
 
 connected_addresses = set()
-last_connections = dict()
-last_datapoints = dict()
+catches = dict()
 
-def update_data(byte_array, service_uuid, nicla_id):
+# Data to send when the website pings
+live_packets = dict()
+
+def update_data(byte_array, service_uuid, nicla_id, address):
     # Adding timestamp as first 
     t = float(time.time())
     time_stamp_bytes = struct.pack("d", t)
@@ -45,8 +48,12 @@ def update_data(byte_array, service_uuid, nicla_id):
         f.write(byte_str + ":")
         f.close()
 
-    last_connections[nicla_id] = time.time()
-    last_datapoints[nicla_id] = byte_str
+    # Address should always be unique
+    live_packets[address] = {
+        "last_connection": time.time(),
+        "last_datapoint": byte_str,
+        "nicla_id": nicla_id
+    }
 
     unpacked_data = struct.unpack(EGG_STATE_STRUCT_STR, byte_array)
     print("Unpacked Data for "+nicla_id)
@@ -67,13 +74,38 @@ async def connect_to_device(device, advertising_data):
             print("Nicla ID: "+nicla_id)
 
             async def notify(sender, data):
-                update_data(data, advertising_data.service_uuids[0], nicla_id)
+                update_data(data, advertising_data.service_uuids[0], nicla_id, device.address)
 
-
-                
             await client.start_notify(DATA_CHAR_ID, notify)
 
-            await client.write_gatt_char(START_TRANSFER_CHAR_ID, 1, True)
+            # If a setting/calibration was requested then attempt to catch the device 
+            if catches[device.address]:
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 3, True)
+
+                # Doing all the setting changes
+                for key in catches[address]:
+                    command_id = None
+                    if key == "calibrate_humidity":
+                        command_id = 1
+                    elif key == "calibrate_temperature":
+                        command_id = 0
+                    elif key == "calibrate_orientation":
+                        command_id = 2
+                    elif key == "address":
+                        pass
+                    else:
+                        print("Invalid command key")
+                        print(key) 
+                        return
+
+                    barray = struct.pack("i f", command_id, catches[address][key])
+                    await client.write_gatt_char(FLOAT_COMMAND_CHAR_ID, barray, True)
+
+                # Release the Egg from the catch state
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 3, True)
+            else:
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 1, True)
+                
             print("Started Transfer")
 
             while (client.is_connected):
@@ -149,21 +181,17 @@ async def main():
 
 print("Running python")
 
-
-
-
-def get_ssl_context(certfile, keyfile):
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.load_cert_chain(certfile, keyfile)
-    context.set_ciphers("@SECLEVEL=1:ALL")
-    return context
-
-
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers["Content-Length"])
         post_data = self.rfile.read(content_length)
+        data = json.load(post_data)
         print(post_data.decode("utf-8"))
+
+        if self.path == "/egg_settings":
+            catches[data.address] = data
+
+        self.end_headers()
 
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -176,30 +204,30 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        self.send_response(200)
         # End the headers
-        self.end_headers()
 
-        # Prepare the response data
-        response_data = {
-            "datetime": time.time(),
-            "method": "GET",
-            "path": self.path,
-            "last_connections": last_connections,
-            "last_datapoints": last_datapoints
-        }
-        # Encode the response data to JSON and then to bytes
-        response_bytes = json.dumps(response_data).encode('utf-8')
+        
+        if self.path == "/ping":
+            self.send_response(200)
+            self.end_headers()
+            # Prepare the response data
+            response_data = {
+                "datetime": time.time(),
+                "method": "GET",
+                "path": self.path,
+                "eggs": live_packets
+                }
+            # Encode the response data to JSON and then to bytes
+            response_bytes = json.dumps(response_data).encode('utf-8')
 
-        # Write the response body
-        self.wfile.write(response_bytes)
+            # Write the response body
+            self.wfile.write(response_bytes)
+            print("Ping")
+        
 
 
-server_address = ("127.0.0.1", int(os.getenv("SERVER_PORT")))
+server_address = ("0.0.0.0", int(os.getenv("SERVER_PORT")))
 httpd = http.server.HTTPServer(server_address, MyHandler)
-
-# context = get_ssl_context("cert.pem", "key.pem")
-# httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
 def run_server():
     httpd.serve_forever()
