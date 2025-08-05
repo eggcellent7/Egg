@@ -155,7 +155,7 @@ function SubstationTab()
     }, [selectedStation])
 
     useEffect(() => {
-        if (pingData && selectedEgg) {
+        if (pingData && selectedEgg && pingData.eggs[selectedEgg]) {
             setEggId(pingData.eggs[selectedEgg].nicla_id);
         } else {
             setEggId("")
@@ -185,7 +185,7 @@ function SubstationTab()
 
         const subData = substations[selectedStation]
 
-        let endpoint = subData.ip_address+":"+EXPECTED_SERVER_PORT
+        let endpoint = "http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT
         if (connectMethod == "NGROK")
             endpoint = subData.ngrok_endpoint
 

@@ -31,8 +31,8 @@ constexpr auto userRoot { "fs" }; // The name of the root of the filesystem
 mbed::BlockDevice* spif; // The SPIF Block Device
 mbed::LittleFileSystem fs { userRoot }; // The LittleFS filesystem
 
-constexpr auto nicla_id_filename { "nicla_id" };
-constexpr auto settings_filename { "settings" };
+constexpr auto nicla_id_filename { "/nicla_id.txt" };
+constexpr auto settings_filename { "/settings.txt" };
 
 char *nicla_id;
 
@@ -117,6 +117,23 @@ void printSettings()
   #endif
 }
 
+void set_default_settings()
+{
+  // Set default Settings
+  settings.temperature_calibration = 0;
+  settings.humidity_calibration = 0;
+  settings.cal_qx = 0;
+  settings.cal_qy = 0;
+  settings.cal_qz = 0;
+  settings.cal_qw = 1;
+  settings.ble_timeout = 20 * 1000;
+  settings.sensor_update_period = 5 * 1000;
+
+  #ifdef DEBUG_MODE
+  Serial.println("set to default settings");
+  #endif
+}
+
 void write_settings()
 {
   // Handle Settings
@@ -131,7 +148,7 @@ void write_settings()
   // Handle Nicla ID
   // Open with create
   mbed::File nicla_id_file;
-  nicla_id_file.open(&fs, settings_filename, O_WRONLY | O_TRUNC | O_CREAT);
+  nicla_id_file.open(&fs, nicla_id_filename, O_WRONLY | O_TRUNC | O_CREAT);
 
   // Writing string length
   int nicla_id_length = strlen(nicla_id) + 1;
@@ -141,6 +158,14 @@ void write_settings()
   nicla_id_file.write(nicla_id, nicla_id_length * sizeof(char));
 
   nicla_id_file.close();
+}
+
+void set_default_nicla_id()
+{
+  // Need to shove into malloc so I can free when needed
+  char * temp_nicla_id = DEFAULT_NICLA_ID;
+  nicla_id = (char*) malloc( ( strlen( DEFAULT_NICLA_ID ) + 1 ) * sizeof(char) );
+  strcpy(nicla_id, temp_nicla_id);
 }
 
 void initFileSystem()
@@ -163,27 +188,27 @@ void initFileSystem()
 
   // Checking for setting file
   mbed::File settings_file;
-  err = settings_file.open(&fs, settings_filename, O_RDONLY | O_TRUNC);
+  err = settings_file.open(&fs, settings_filename, O_RDONLY);
   if (err) {
       #ifdef DEBUG_MODE
       Serial.print("Error opening settings_file for reading: Probably doesnt exist");
       Serial.println(err);
       #endif
 
-      // Set default Settings
-      settings.temperature_calibration = 0;
-      settings.humidity_calibration = 0;
-      settings.cal_qx = 0;
-      settings.cal_qy = 0;
-      settings.cal_qz = 0;
-      settings.cal_qw = 1;
-      settings.ble_timeout = 20 * 1000;
-      settings.sensor_update_period = 5 * 1000;
+      set_default_settings();
   } else {
     // Read file
 
     // Probably works idk
     settings_file.read(&settings, sizeof(SettingsStruct));
+
+    // Checking for errors
+    if (settings.ble_timeout == 0 || settings.sensor_update_period == 0)
+    {
+      printSettings();
+      set_default_settings();
+    }
+      
   }
 
   settings_file.close();
@@ -193,26 +218,34 @@ void initFileSystem()
   // Reading nicla id
   // Checking for nicla_id file
   mbed::File nicla_id_file;
-  err = nicla_id_file.open(&fs, nicla_id_filename, O_RDONLY | O_TRUNC);
+  err = nicla_id_file.open(&fs, nicla_id_filename, O_RDONLY);
   if (err) {
       #ifdef DEBUG_MODE
       Serial.print("Error opening nicla_id_file for reading: Probably doesnt exist");
       Serial.println(err);
       #endif
 
-      // Need to shove into malloc so I can free when needed
-      char * temp_nicla_id = DEFAULT_NICLA_ID;
-      nicla_id = (char*) malloc( ( strlen( DEFAULT_NICLA_ID ) + 1 ) * sizeof(char) );
-      strcpy(nicla_id, temp_nicla_id);
+      set_default_nicla_id();
   } else {
     // Read file
 
     // Getting String Length
     int str_length;
     nicla_id_file.read(&str_length, sizeof(int)); // String length shouldnt be too long
-    nicla_id = (char*) malloc(str_length * sizeof(char));
 
-    settings_file.read(&nicla_id, str_length);
+    #ifdef DEBUG_MODE
+    Serial.print("Nicla ID Length: ");
+    Serial.println(str_length);
+    #endif
+
+    if (str_length == 0)
+    {
+      set_default_nicla_id(); 
+    } else {
+      nicla_id = (char*) malloc(str_length * sizeof(char));
+
+      nicla_id_file.read(nicla_id, str_length);
+    }
   }
 
   idEggCharacteristic.setValue(nicla_id);
@@ -265,7 +298,6 @@ void turnOnBLE()
         #endif
 
         central.disconnect();
-        BLE.disconnect();
         BLE.end();
         delay(100);
         shutdown();
@@ -291,6 +323,33 @@ void turnOnBLE()
     }
   });
 
+  floatCommandCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
+    FloatCommand f_command = *(FloatCommand*)(floatCommandCharacteristic.value());
+
+    #ifdef DEBUG_MODE
+    Serial.print("Command ID: ");
+    Serial.println(f_command.command_id);
+    #endif
+      
+    float offset;
+    switch (f_command.command_id) 
+    {
+      // Calibrate Temperature
+      case 0:
+        offset = f_command.command_value - raw_temp;
+        settings.temperature_calibration = offset;
+        break;
+      // Calibrate Humidity
+      case 1:
+        offset = f_command.command_value - raw_humidity;
+        settings.humidity_calibration = offset;
+        break;
+      // Set orientation as up
+      case 2:
+        break;
+    }
+  });
+
 
   // add service
 
@@ -300,13 +359,6 @@ void turnOnBLE()
   // start advertising
 
   BLE.advertise();
-}
-
-void turnOffBLE()
-{
-  BLE.stopAdvertise();
-  BLE.disconnect();
-  BLE.end();
 }
 
 const int TEMPERATURE_SCALE = 50;
@@ -385,8 +437,6 @@ void pollSensors()
   Serial.println(millis() - t);
   #endif
 
-
-
   updateSensors();
 
   temperature.end();
@@ -413,7 +463,7 @@ void setup() {
 
   // Serial Begin
   #ifdef DEBUG_MODE
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial);
   Serial.println("Wokeup");
   #endif
@@ -455,28 +505,6 @@ void setup() {
 
   // while the central is still connected to peripheral:
   while (central.connected()) {
-    if (floatCommandCharacteristic.written())
-    {
-      FloatCommand f_command = *(FloatCommand*)(floatCommandCharacteristic.value());
-      
-      float offset;
-      switch (f_command.command_id) 
-      {
-        // Calibrate Temperature
-        case 0:
-          offset = f_command.command_value - raw_temp;
-          settings.temperature_calibration = offset;
-          break;
-        // Calibrate Humidity
-        case 1:
-          offset = f_command.command_value - raw_humidity;
-          settings.humidity_calibration = offset;
-          break;
-        // Set orientation as up
-        case 2:
-          break;
-      }
-    }
 
     if (time_since(millis(), BLE_START) > settings.ble_timeout)
     {
@@ -485,12 +513,6 @@ void setup() {
       #endif
 
       shutdown();
-    }
-
-
-    if (startTransferEggCharacteristic.written())
-    {
-      
     }
  }
 

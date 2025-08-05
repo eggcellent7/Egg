@@ -86,6 +86,8 @@ async def connect_to_device(device, advertising_data):
                 barray = struct.pack("i", 2)
                 await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
 
+                time.sleep(0.1)
+
                 # Doing all the setting changes
                 for key in catches[device.address]:
                     command_id = None
@@ -108,10 +110,14 @@ async def connect_to_device(device, advertising_data):
                     barray = struct.pack("i f", command_id, catches[device.address][key])
                     await client.write_gatt_char(FLOAT_COMMAND_CHAR_ID, barray, True)
 
+                    time.sleep(0.1)
+
                 # Release the Egg from the catch state
                 barray = struct.pack("i", 3)
                 await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
                 print("Started Catch")
+
+                del catches[device.address]
             else:
                 barray = struct.pack("i", 1)
                 await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
