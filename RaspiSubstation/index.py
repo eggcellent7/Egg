@@ -97,7 +97,7 @@ async def connect_to_device(device, advertising_data):
                         command_id = 0
                     elif key == "calibrate_orientation":
                         command_id = 2
-                    elif key == "address":
+                    elif key == "address" or  key == "id":
                        continue 
                     else:
                         print("Invalid command key")
@@ -112,8 +112,14 @@ async def connect_to_device(device, advertising_data):
 
                     time.sleep(0.1)
 
+                if "id" in catches[device.address]:
+                    new_id = catches[device.address]["id"]+"\0"
+                    await client.write_gatt_char(ID_CHAR_ID, new_id.encode("utf-8"), True)
+                    time.sleep(0.1)
+
                 # Release the Egg from the catch state
                 barray = struct.pack("i", 3)
+                print("Writing the end")
                 await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
                 print("Started Catch")
 
@@ -208,6 +214,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/catch":
             catches[data["address"]] = data
 
+        self.send_response(200)
         self.end_headers()
 
     def end_headers(self):

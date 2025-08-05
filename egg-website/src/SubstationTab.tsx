@@ -156,7 +156,8 @@ function SubstationTab()
 
     useEffect(() => {
         if (pingData && selectedEgg && pingData.eggs[selectedEgg]) {
-            setEggId(pingData.eggs[selectedEgg].nicla_id);
+            if (eggId == "")
+                setEggId(pingData.eggs[selectedEgg].nicla_id);
         } else {
             setEggId("")
         }
@@ -177,6 +178,9 @@ function SubstationTab()
             address: selectedEgg
         }
 
+        if (eggId != selectedEgg)
+            changes["id"] = eggId;
+
         if (tempCalibration != "")
             changes["calibrate_temperature"] = parseFloat(tempCalibration);
 
@@ -185,11 +189,11 @@ function SubstationTab()
 
         const subData = substations[selectedStation]
 
-        let endpoint = "http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT
+        let endpoint = "http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT;
         if (connectMethod == "NGROK")
-            endpoint = subData.ngrok_endpoint
+            endpoint = subData.ngrok_endpoint;
 
-        const bod = JSON.stringify(changes)
+        const bod = JSON.stringify(changes);
 
         fetch(endpoint+"/catch", {
             method: "POST",
@@ -197,7 +201,7 @@ function SubstationTab()
                 "ngrok-skip-browser-warning": "1"
             },
             body: bod
-        })
+        });
     }
     
 

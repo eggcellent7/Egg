@@ -1,32 +1,13 @@
 import { useEffect, useState, useRef } from "react";
-import { db } from "./firebaseConfig";
-import { collection, getDocs } from "firebase/firestore";
-import { decodeBase64SensorChunk } from "./utils/base64Decoder";
 import {
   Typography,
   Box,
   CssBaseline,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
   Button,
-  Slider,
-  Chip,
 } from "@mui/material";
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import Grid from '@mui/material/Grid';
-import CloseIcon from "@mui/icons-material/Close";
 import InfoIcon from "@mui/icons-material/Info";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import PauseIcon from "@mui/icons-material/Pause";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import UserManual from "./UserManual";
 import EggTab from "./EggTab";

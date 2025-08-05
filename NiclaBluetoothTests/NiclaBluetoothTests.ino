@@ -92,6 +92,8 @@ int in_caught_state = 0;
 
 BLEDevice central;
 
+bool needs_shutdown = false;
+
 // To avoid millis() wrapping messing things up
 unsigned long time_since(unsigned long current, unsigned long last)
 {
@@ -248,12 +250,12 @@ void initFileSystem()
     }
   }
 
-  idEggCharacteristic.setValue(nicla_id);
-
   #ifdef DEBUG_MODE
   Serial.print("Nicla ID: ");
   Serial.println(nicla_id);
   #endif
+
+  idEggCharacteristic.setValue(nicla_id);
 }
 
 void turnOnBLE()
@@ -277,6 +279,15 @@ void turnOnBLE()
   eggService.addCharacteristic(startTransferEggCharacteristic);
   eggService.addCharacteristic(floatCommandCharacteristic);
 
+  idEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
+    nicla_id = (char*) (idEggCharacteristic.value());
+
+    #ifdef DEBUG_MODE
+    Serial.print("New Nicla ID: ");
+    Serial.println(nicla_id);
+    #endif
+  });
+
   startTransferEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
 
     // TODO: Make this only use one byte instead of 4
@@ -297,10 +308,7 @@ void turnOnBLE()
         Serial.println("Finished Polling, will now shutdown");
         #endif
 
-        central.disconnect();
-        BLE.end();
-        delay(100);
-        shutdown();
+        needs_shutdown = true;
         break;
 
       // Go into a caught state to listen to setting changes and stuff
@@ -317,8 +325,7 @@ void turnOnBLE()
         Serial.println("Got outa catch state");
         #endif
 
-        delay(100); // not sure if this is nessesary
-        shutdown();
+        needs_shutdown = true;
         break;
     }
   });
@@ -452,13 +459,17 @@ void shutdown()
   Serial.println("Shutting Down");
   #endif
 
-  digitalWrite(P0_16, LOW);  // turn off sensor hub
+  digitalWrite(P0_16, LOW);  // turn off sensor hub "probably"
+
+  central.disconnect();
+  BLE.disconnect();
+  BLE.end();
   NVIC_SystemReset();
 } 
 
 void setup() {
 
-  digitalWrite(P0_16, LOW);  // turn off sensor hub
+  digitalWrite(P0_16, LOW);  // turn off sensor hub "probably"
   BLE.end();
 
   // Serial Begin
@@ -474,9 +485,6 @@ void setup() {
 
   turnOnBLE();
 
-  // Serial.println("BLE On");
-
-  // Attempt to keep reconnecting until it works
   unsigned long BLE_START = millis();
 
   while(true)
@@ -514,6 +522,9 @@ void setup() {
 
       shutdown();
     }
+
+    if (needs_shutdown)
+      shutdown();
  }
 
  #ifdef DEBUG_MODE
@@ -523,8 +534,10 @@ void setup() {
 
 void loop() {
   #ifdef DEBUG_MODE
-  Serial.println("Somehow made it to loop, HOWWW?");
+  Serial.println("Made it into loop, Probably disconnected");
   #endif
+
+  delay(1000);
 
   shutdown();
 }
