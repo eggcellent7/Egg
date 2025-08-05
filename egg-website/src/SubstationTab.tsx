@@ -33,6 +33,8 @@ import Grid from '@mui/material/Grid';
 
 const substation_col_id = "substations"
 
+const EXPECTED_SERVER_PORT = "8080"
+
 function parseDeviceTime(t: string)
 {
     return new Date(parseFloat(t)*1000).toLocaleString()
@@ -54,6 +56,11 @@ function SubstationTab()
     const [pingData, setPingData] = useState<PingData>()
     const [connectMethod, setConnectMethod] = useState("NGROK")
     const [selectedEgg, setSelectedEgg] = useState<string>();
+
+    // Egg Config Properties
+    const [eggId, setEggId] = useState("")
+    const [tempCalibration, setTempCalibration] = useState("");
+    const [humCalibration, setHumCalibration] = useState("");
 
     useEffect(() => {
         const fetchData = async () => {
@@ -93,6 +100,7 @@ function SubstationTab()
                 return response.json(); 
             })
             .then(data => {
+                console.log("got data", data);
                 setPingData(data)
                 
             })
@@ -126,7 +134,7 @@ function SubstationTab()
                 if ( subData.ip_address )
                 {
                     console.log("Pinging local");
-                    pingForData("http://"+subData.ip_address+":8080", () => setConnectMethod("NGROK"));
+                    pingForData("http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT, () => setConnectMethod("NGROK"));
                 } else {
                     setConnectMethod("NGROK");
                 }
@@ -146,12 +154,49 @@ function SubstationTab()
         setPingData(undefined);
     }, [selectedStation])
 
+    useEffect(() => {
+        if (pingData && selectedEgg) {
+            setEggId(pingData.eggs[selectedEgg].nicla_id);
+        } else {
+            setEggId("")
+        }
+    }, [pingData, selectedEgg])
+
     const rows: {[address: string]: any[]} = {};
     if (pingData)
     {
         Object.keys(pingData.eggs).map((address) => {
             const data_string: string = pingData.eggs[address].last_datapoint
             rows[address] = decodeBase64SensorChunk(data_string)
+        })
+    }
+
+    function applyChanges()
+    {
+        const changes: any = {
+            address: selectedEgg
+        }
+
+        if (tempCalibration != "")
+            changes["calibrate_temperature"] = parseFloat(tempCalibration);
+
+        if (humCalibration != "")
+            changes["calibrate_humidity"] = parseFloat(humCalibration);
+
+        const subData = substations[selectedStation]
+
+        let endpoint = subData.ip_address+":"+EXPECTED_SERVER_PORT
+        if (connectMethod == "NGROK")
+            endpoint = subData.ngrok_endpoint
+
+        const bod = JSON.stringify(changes)
+
+        fetch(endpoint+"/catch", {
+            method: "POST",
+            headers: {
+                "ngrok-skip-browser-warning": "1"
+            },
+            body: bod
         })
     }
     
@@ -208,7 +253,8 @@ function SubstationTab()
                     <Table sx={{ minWidth: 650 }} aria-label="simple table">
                         <TableHead>
                         <TableRow>
-                            <TableCell>Eggs</TableCell>
+                            <TableCell>Eggs ID</TableCell>
+                            <TableCell align="right">Address</TableCell>
                             <TableCell align="right">Last timestamp</TableCell>
                             <TableCell align="right">Temperature (c)</TableCell>
                             <TableCell align="right">Humidity (%)</TableCell>
@@ -223,12 +269,14 @@ function SubstationTab()
                             <TableRow
                             key={address}
                             sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                            onClick={(_) => setSelectedEgg(address)}
+                            onClick={(_) => selectedEgg == address ? setSelectedEgg(undefined):setSelectedEgg(address)}
                             selected={address == selectedEgg}
+                            style={{cursor: "pointer"}}
                             >
                             <TableCell component="th" scope="row">
                                 {pingData?.eggs[address].nicla_id}
                             </TableCell>
+                            <TableCell align="right">{address}</TableCell>
                             <TableCell align="right">{parseDeviceTime(rows[address][0])}</TableCell>
                             <TableCell align="right">{rows[address][5]}</TableCell>
                             <TableCell align="right">{rows[address][6]}</TableCell>
@@ -240,7 +288,45 @@ function SubstationTab()
                         }
                         </TableBody>
                     </Table>
-                    </TableContainer>
+                </TableContainer>
+
+                <br/>
+
+                <Box mb={2}>
+                    {!selectedEgg && "Select an egg"}
+                    {selectedEgg && <FormControl fullWidth>
+                        Selected Egg "{pingData?.eggs[selectedEgg]?.nicla_id}"
+                        <br/>
+                        <TextField id="outlined-basic" label="Egg ID" variant="outlined" 
+                            value={eggId} onChange={(e) => setEggId(e.target.value)}/>
+                        
+                        <br/>
+                        <TextField id="outlined-basic" label="Temperature Calibration" variant="outlined" 
+                            value={tempCalibration} onChange={(e) => {
+                                if (e.target.value == "") {
+                                    setTempCalibration("");
+                                } else {
+                                    if (isNaN(parseFloat(e.target.value)))
+                                        return
+                                    setTempCalibration(e.target.value);
+                                }
+                            }}/>
+
+                        <br/>
+                        <TextField id="outlined-basic" label="Humidity Calibration" variant="outlined" 
+                            value={humCalibration} onChange={(e) => {
+                                if (e.target.value == "") {
+                                    setHumCalibration("");
+                                } else {
+                                    if (isNaN(parseFloat(e.target.value)))
+                                        return
+                                    setHumCalibration(e.target.value);
+                                }
+                            }}/>
+
+                        <Button variant="outlined" onClick={applyChanges}>Apply Changes</Button>
+                    </FormControl>}
+                </Box>
             </Box>
         </Grid>}
     

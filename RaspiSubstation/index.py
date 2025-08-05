@@ -67,6 +67,7 @@ async def connect_to_device(device, advertising_data):
     
     try:
         async with BleakClient(device, timeout = 40) as client:
+            # WARNING Needs error handling, will drop connection if errored and silently
             print("Connected")
 
             nicla_id = (await client.read_gatt_char(ID_CHAR_ID)).decode("utf-8")
@@ -78,12 +79,15 @@ async def connect_to_device(device, advertising_data):
 
             await client.start_notify(DATA_CHAR_ID, notify)
 
+            print("Finished Notify")
+
             # If a setting/calibration was requested then attempt to catch the device 
-            if catches[device.address]:
-                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 3, True)
+            if device.address in catches:
+                barray = struct.pack("i", 2)
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
 
                 # Doing all the setting changes
-                for key in catches[address]:
+                for key in catches[device.address]:
                     command_id = None
                     if key == "calibrate_humidity":
                         command_id = 1
@@ -92,21 +96,27 @@ async def connect_to_device(device, advertising_data):
                     elif key == "calibrate_orientation":
                         command_id = 2
                     elif key == "address":
-                        pass
+                       continue 
                     else:
                         print("Invalid command key")
                         print(key) 
-                        return
+                        continue
 
-                    barray = struct.pack("i f", command_id, catches[address][key])
+                    print("Writing key"+key)
+                        
+
+                    barray = struct.pack("i f", command_id, catches[device.address][key])
                     await client.write_gatt_char(FLOAT_COMMAND_CHAR_ID, barray, True)
 
                 # Release the Egg from the catch state
-                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 3, True)
+                barray = struct.pack("i", 3)
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
+                print("Started Catch")
             else:
-                await client.write_gatt_char(START_TRANSFER_CHAR_ID, 1, True)
+                barray = struct.pack("i", 1)
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
+                print("Started Polling")
                 
-            print("Started Transfer")
 
             while (client.is_connected):
                 await asyncio.sleep(1)
@@ -133,6 +143,7 @@ async def main():
         print("Set stopped to")
         print(stopped)
         stop_event.set()
+        httpd.shutdown()
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
@@ -185,11 +196,11 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers["Content-Length"])
         post_data = self.rfile.read(content_length)
-        data = json.load(post_data)
+        data = json.loads(post_data.decode("utf-8"))
         print(post_data.decode("utf-8"))
 
-        if self.path == "/egg_settings":
-            catches[data.address] = data
+        if self.path == "/catch":
+            catches[data["address"]] = data
 
         self.end_headers()
 
