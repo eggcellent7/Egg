@@ -26,7 +26,7 @@
 
 #define BLE_TIMEOUT (20*1000)
 
-#define DEBUG_MODE
+// #define DEBUG_MODE
 
 // File system stuff
 constexpr auto userRoot { "fs" }; // The name of the root of the filesystem
@@ -61,7 +61,7 @@ typedef struct SettingsStruct {
 } Settings;
 
 typedef struct FloatCommandStruct {
-  int command_id;
+  uint8_t command_id;
   float command_value;
 } FloatCommand;
 
@@ -354,6 +354,7 @@ void turnOnBLE()
         break;
       // Set orientation as up
       case 3:
+        
         break;
     }
   });

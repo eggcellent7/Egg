@@ -96,7 +96,7 @@ async def connect_to_device(device, advertising_data):
                     elif key == "calibrate_temperature":
                         command_id = 0
                     elif key == "polling_speed":
-                        command_id = 0
+                        command_id = 2
                     elif key == "calibrate_orientation":
                         command_id = 3
                     elif key == "address" or  key == "id":
@@ -109,7 +109,7 @@ async def connect_to_device(device, advertising_data):
                     print("Writing key"+key)
                         
 
-                    barray = struct.pack("i f", command_id, catches[device.address][key])
+                    barray = struct.pack("B f", command_id, catches[device.address][key])
                     await client.write_gatt_char(FLOAT_COMMAND_CHAR_ID, barray, True)
 
                     time.sleep(0.1)

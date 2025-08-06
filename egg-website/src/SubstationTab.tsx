@@ -23,6 +23,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
+import { CheckBox } from "@mui/icons-material";
 
 const substation_col_id = "substations"
 
@@ -43,6 +44,10 @@ type PingData = {
     saved: string[]
 };
 
+function pFloat(v: string): number
+{
+    return parseFloat(v.replace(",", ""))
+}
 
 function SubstationTab()
 {
@@ -189,13 +194,13 @@ function SubstationTab()
             changes["id"] = eggId;
 
         if (tempCalibration != "")
-            changes["calibrate_temperature"] = parseFloat(tempCalibration);
+            changes["calibrate_temperature"] = pFloat(tempCalibration);
 
         if (humCalibration != "")
-            changes["calibrate_humidity"] = parseFloat(humCalibration);
+            changes["calibrate_humidity"] = pFloat(humCalibration);
 
         if (pollingSpeed != "")
-            changes["polling_speed"] = parseFloat(pollingSpeed);
+            changes["polling_speed"] = pFloat(pollingSpeed);
 
         const bod = JSON.stringify(changes);
 
@@ -334,6 +339,8 @@ function SubstationTab()
                                     setTempCalibration(e.target.value);
                                 }
                             }}/>
+
+                        {/* <FormControlLabel control={<CheckBox defaultChecked />} label="Label" /> */}
 
                         <br/>
                         <TextField id="outlined-basic" label="Humidity Calibration (%)" variant="outlined" 
