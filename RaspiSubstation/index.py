@@ -234,19 +234,39 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/ping":
             self.send_response(200)
             self.end_headers()
+
             # Prepare the response data
             response_data = {
                 "datetime": time.time(),
                 "method": "GET",
                 "path": self.path,
-                "eggs": live_packets
+                "eggs": live_packets,
+                "saved": [f for f in os.listdir("./saved")] # Listing out saved directory so it can be downloaded
                 }
+
+            
             # Encode the response data to JSON and then to bytes
             response_bytes = json.dumps(response_data).encode('utf-8')
 
             # Write the response body
             self.wfile.write(response_bytes)
             print("Ping")
+        elif self.path.startswith("/saved"):
+            split_path = self.path.split("/")
+            egg_id = split_path[2]
+            filepath = "./saved/"+egg_id
+            if os.path.exists(filepath):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Disposition", f"attachment; filename={egg_id}")
+                self.send_header("Content-Length", str(os.path.getsize(filepath)))
+                self.end_headers()
+                with open(filepath, "rb") as f:
+                    while chunk := f.read(8192):
+                        self.wfile.write(chunk)
+            else:
+                self.send_response(404)
+                self.end_headers()
         
 
 

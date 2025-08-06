@@ -46,8 +46,10 @@ type PingData = {
         last_connection: number,
         last_datapoint: string
         nicla_id: string
-    }}
+    }},
+    saved: string[]
 };
+
 
 function SubstationTab()
 {
@@ -56,11 +58,21 @@ function SubstationTab()
     const [pingData, setPingData] = useState<PingData>()
     const [connectMethod, setConnectMethod] = useState("NGROK")
     const [selectedEgg, setSelectedEgg] = useState<string>();
+    const [selectedFile, setSelectedFile] = useState<string>("");
 
     // Egg Config Properties
     const [eggId, setEggId] = useState("")
     const [tempCalibration, setTempCalibration] = useState("");
     const [humCalibration, setHumCalibration] = useState("");
+
+    function getEndpoint()
+    {
+        const subData = substations[selectedStation]
+        if (connectMethod == "NGROK")
+            return subData.ngrok_endpoint;
+        else
+            return "http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT
+    }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -187,14 +199,9 @@ function SubstationTab()
         if (humCalibration != "")
             changes["calibrate_humidity"] = parseFloat(humCalibration);
 
-        const subData = substations[selectedStation]
-
-        let endpoint = "http://"+subData.ip_address+":"+EXPECTED_SERVER_PORT;
-        if (connectMethod == "NGROK")
-            endpoint = subData.ngrok_endpoint;
-
         const bod = JSON.stringify(changes);
 
+        const endpoint = getEndpoint();
         fetch(endpoint+"/catch", {
             method: "POST",
             headers: {
@@ -202,6 +209,20 @@ function SubstationTab()
             },
             body: bod
         });
+    }
+
+    function DownloadSavedData()
+    {
+        if (!selectedFile || selectedFile == "")
+            return;
+
+        const link = document.createElement("a");
+        const endpoint = getEndpoint();
+        link.href = endpoint+"/saved/"+selectedFile;
+        link.download = selectedFile; // optional: suggest filename
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
     
 
@@ -331,6 +352,36 @@ function SubstationTab()
                         <Button variant="outlined" onClick={applyChanges}>Apply Changes</Button>
                     </FormControl>}
                 </Box>
+
+                <Grid container spacing={2} alignItems="center" mb={4}>
+            <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+            <FormControl fullWidth>
+                <InputLabel>Download Saved Data</InputLabel>
+                <Select
+                value={selectedFile}
+                label="Select Data file"
+                onChange={(e: any) => {
+                    setSelectedFile(e?.target?.value);
+                }}
+                MenuProps={{
+                    disablePortal: true,
+                    PaperProps: {
+                    style: {
+                        maxHeight: 300,
+                    },
+                },
+            }}
+                >
+                {pingData && (pingData.saved || []).map((id) => (
+                    <MenuItem key={id} value={id}>
+                    {id}
+                    </MenuItem>
+                ))}
+                </Select>
+                <Button onClick={DownloadSavedData} variant="outlined">Download</Button>
+            </FormControl>
+            </Grid>
+        </Grid>
             </Box>
         </Grid>}
     

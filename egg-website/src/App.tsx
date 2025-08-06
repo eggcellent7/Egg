@@ -12,6 +12,7 @@ import { createTheme, ThemeProvider } from "@mui/material/styles";
 import UserManual from "./UserManual";
 import EggTab from "./EggTab";
 import SubstationTab from "./SubstationTab";
+import Dataview from "./Dataview"
 
 const lightTheme = createTheme({
   palette: {
@@ -64,6 +65,7 @@ function App() {
         }} aria-label="tabs">
           <Tab label="Eggs"/>
           <Tab label="Substations" />
+          <Tab label="Dataview" />
         </Tabs>
       </Box>
 
@@ -71,6 +73,7 @@ function App() {
 
       {tab == 0 && <EggTab/>}
       {tab == 1 && <SubstationTab/>}
+      {tab == 2 && <Dataview/>}
       </Box>
     </ThemeProvider>
   );
