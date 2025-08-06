@@ -24,6 +24,8 @@
 
 #define CODE_VERSION "1.0.0"
 
+#define BLE_TIMEOUT (20*1000)
+
 #define DEBUG_MODE
 
 // File system stuff
@@ -56,7 +58,6 @@ typedef struct SettingsStruct {
   float cal_qy;
   float cal_qz;
   float cal_qw;
-  float ble_timeout;
 } Settings;
 
 typedef struct FloatCommandStruct {
@@ -112,9 +113,6 @@ void printSettings()
   Serial.print("sensor_update_period: ");
   Serial.println(settings.sensor_update_period); 
 
-  Serial.print("ble_timeout: ");
-  Serial.println(settings.ble_timeout); 
-
   
   #endif
 }
@@ -128,7 +126,6 @@ void set_default_settings()
   settings.cal_qy = 0;
   settings.cal_qz = 0;
   settings.cal_qw = 1;
-  settings.ble_timeout = 20 * 1000;
   settings.sensor_update_period = 5 * 1000;
 
   #ifdef DEBUG_MODE
@@ -205,7 +202,7 @@ void initFileSystem()
     settings_file.read(&settings, sizeof(SettingsStruct));
 
     // Checking for errors
-    if (settings.ble_timeout == 0 || settings.sensor_update_period == 0)
+    if (settings.sensor_update_period == 0)
     {
       printSettings();
       set_default_settings();
@@ -351,8 +348,12 @@ void turnOnBLE()
         offset = f_command.command_value - raw_humidity;
         settings.humidity_calibration = offset;
         break;
-      // Set orientation as up
+      // Set Update Period
       case 2:
+        settings.sensor_update_period = f_command.command_value;
+        break;
+      // Set orientation as up
+      case 3:
         break;
     }
   });
@@ -492,7 +493,7 @@ void setup() {
     delay(10);
     central = BLE.central();
 
-    if (time_since(millis(), BLE_START) > settings.ble_timeout)
+    if (time_since(millis(), BLE_START) > BLE_TIMEOUT)
     {
       #ifdef DEBUG_MODE
       Serial.println("Connection Timeout");
@@ -514,7 +515,7 @@ void setup() {
   // while the central is still connected to peripheral:
   while (central.connected()) {
 
-    if (time_since(millis(), BLE_START) > settings.ble_timeout)
+    if (time_since(millis(), BLE_START) > BLE_TIMEOUT)
     {
       #ifdef DEBUG_MODE
       Serial.println("BLE Timeout");

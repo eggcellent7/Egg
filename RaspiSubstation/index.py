@@ -95,8 +95,10 @@ async def connect_to_device(device, advertising_data):
                         command_id = 1
                     elif key == "calibrate_temperature":
                         command_id = 0
+                    elif key == "polling_speed":
+                        command_id = 0
                     elif key == "calibrate_orientation":
-                        command_id = 2
+                        command_id = 3
                     elif key == "address" or  key == "id":
                        continue 
                     else:

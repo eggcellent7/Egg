@@ -1,26 +1,19 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 
 import { db } from "./firebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import { decodeBase64SensorChunk } from "./utils/base64Decoder";
 
 import {
-  Typography,
   Box,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
   Button,
-  Slider,
-  Chip,
-  Stack,
   Switch,
+  FormControlLabel,
 } from "@mui/material";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -64,6 +57,8 @@ function SubstationTab()
     const [eggId, setEggId] = useState("")
     const [tempCalibration, setTempCalibration] = useState("");
     const [humCalibration, setHumCalibration] = useState("");
+    const [pollingSpeed, setPollingSpeed] = useState("");
+    const [calibrateOrientation, setCalibrateOrientation] = useState(false)
 
     function getEndpoint()
     {
@@ -199,6 +194,9 @@ function SubstationTab()
         if (humCalibration != "")
             changes["calibrate_humidity"] = parseFloat(humCalibration);
 
+        if (pollingSpeed != "")
+            changes["polling_speed"] = parseFloat(pollingSpeed);
+
         const bod = JSON.stringify(changes);
 
         const endpoint = getEndpoint();
@@ -326,7 +324,7 @@ function SubstationTab()
                             value={eggId} onChange={(e) => setEggId(e.target.value)}/>
                         
                         <br/>
-                        <TextField id="outlined-basic" label="Temperature Calibration" variant="outlined" 
+                        <TextField id="outlined-basic" label="Temperature Calibration (C)" variant="outlined" 
                             value={tempCalibration} onChange={(e) => {
                                 if (e.target.value == "") {
                                     setTempCalibration("");
@@ -338,7 +336,7 @@ function SubstationTab()
                             }}/>
 
                         <br/>
-                        <TextField id="outlined-basic" label="Humidity Calibration" variant="outlined" 
+                        <TextField id="outlined-basic" label="Humidity Calibration (%)" variant="outlined" 
                             value={humCalibration} onChange={(e) => {
                                 if (e.target.value == "") {
                                     setHumCalibration("");
@@ -348,6 +346,24 @@ function SubstationTab()
                                     setHumCalibration(e.target.value);
                                 }
                             }}/>
+
+                        <br/>
+                        <TextField id="outlined-basic" label="Polling Speed (s)" variant="outlined" 
+                            value={pollingSpeed} onChange={(e) => {
+                                if (e.target.value == "") {
+                                    setPollingSpeed("");
+                                } else {
+                                    if (isNaN(parseFloat(e.target.value)))
+                                        return
+                                    setPollingSpeed(e.target.value);
+                                }
+                            }}/>
+
+                        <FormControlLabel control={<Switch 
+                            checked={calibrateOrientation} 
+                            onChange={(e: any) => setCalibrateOrientation(e.target.checked)} 
+                            inputProps={{ 'aria-label': 'controlled' }}
+                            />} label="Calibrate Orientation" />
 
                         <Button variant="outlined" onClick={applyChanges}>Apply Changes</Button>
                     </FormControl>}

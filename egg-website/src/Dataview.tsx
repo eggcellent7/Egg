@@ -1,26 +1,10 @@
-import { useEffect, useState, useRef } from "react";
-
-import { db } from "./firebaseConfig";
-import { collection, getDocs } from "firebase/firestore";
+import { useState, useRef } from "react";
 import { decodeBase64SensorChunk } from "./utils/base64Decoder";
 
 import {
-  Typography,
-  Box,
   FormControl,
   InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
   Button,
-  Slider,
-  Chip,
-  Stack,
-  Switch,
   Grid
 } from "@mui/material";
 
