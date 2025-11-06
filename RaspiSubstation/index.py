@@ -84,6 +84,8 @@ async def connect_to_device(device, advertising_data):
             # If a setting/calibration was requested then attempt to catch the device 
             if device.address in catches:
                 barray = struct.pack("i", 2)
+                print("Start Transfer");
+                print(catches)
                 await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
 
                 time.sleep(0.1)
@@ -116,8 +118,9 @@ async def connect_to_device(device, advertising_data):
 
                 if "id" in catches[device.address]:
                     new_id = catches[device.address]["id"]+"\0"
+                    print(f"New ID \"{new_id}\"");
                     await client.write_gatt_char(ID_CHAR_ID, new_id.encode("utf-8"), True)
-                    time.sleep(0.1)
+                    time.sleep(1)
 
                 # Release the Egg from the catch state
                 barray = struct.pack("i", 3)
@@ -128,7 +131,8 @@ async def connect_to_device(device, advertising_data):
                 del catches[device.address]
             else:
                 barray = struct.pack("i", 1)
-                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
+                print("Started Transfer")
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, False)
                 print("Started Polling")
                 
 
