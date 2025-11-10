@@ -19,14 +19,15 @@
 #define VERSION_CHAR_ID "19B10004-E8F2-537E-4F6C-D104768A1214"
 #define FLOAT_COMMAND_CHAR_ID "19B10005-E8F2-537E-4F6C-D104768A1214"
 
-#define DEFAULT_NICLA_ID "UNDEFINED_ID"
+#define DEFAULT_NICLA_ID "UND"
 #define MAX_NICLA_ID_LENGTH 15
 
 #define CODE_VERSION "1.0.0"
 
 #define BLE_TIMEOUT (20*1000)
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
+#define OVERWRITE_PERIOD
 
 // File system stuff
 constexpr auto userRoot { "fs" }; // The name of the root of the filesystem
@@ -483,7 +484,12 @@ void setup() {
 
   initFileSystem();
 
+  #ifdef OVERWRITE_PERIOD
+  delay((int) 5000);
+  #elif
   delay((int) settings.sensor_update_period);
+  #endif
+  
 
   turnOnBLE();
 
@@ -525,8 +531,16 @@ void setup() {
       shutdown();
     }
 
-    if (needs_shutdown)
-      shutdown();
+    if (needs_shutdown) {
+      unsigned long shutdown_start = millis();
+      while (central.connected()) {
+        if (time_since(millis(), shutdown_start) > 10000)
+          shutdown();
+        delay(1);
+      }
+
+    }
+      
  }
 
  #ifdef DEBUG_MODE
