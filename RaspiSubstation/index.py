@@ -132,7 +132,7 @@ async def connect_to_device(device, advertising_data):
             else:
                 barray = struct.pack("i", 1)
                 print("Started Transfer")
-                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, False)
+                await client.write_gatt_char(START_TRANSFER_CHAR_ID, barray, True)
                 print("Started Polling")
                 
 

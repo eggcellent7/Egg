@@ -5,13 +5,7 @@
 
 #include <string.h>
 
-#include <BlockDevice.h>
-#include <Dir.h>
-#include <File.h>
-#include <FileSystem.h>
-#include <LittleFileSystem.h>
-
-#define SERVICE_NAME "EggcellentImposter"
+#define SERVICE_NAME "EggcellentImposter2"
 #define SERVICE_UUID "19B10000-E8F2-537E-4F6C-D104768A1214"
 #define DATA_CHAR_ID "19B10001-E8F2-537E-4F6C-D104768A1214"
 #define ID_CHAR_ID "19B10002-E8F2-537E-4F6C-D104768A1214"
@@ -28,14 +22,6 @@
 
 #define DEBUG_MODE
 #define OVERWRITE_PERIOD
-
-// File system stuff
-constexpr auto userRoot { "fs" }; // The name of the root of the filesystem
-mbed::BlockDevice* spif; // The SPIF Block Device
-mbed::LittleFileSystem fs { userRoot }; // The LittleFS filesystem
-
-constexpr auto nicla_id_filename { "/nicla_id.txt" };
-constexpr auto settings_filename { "/settings.txt" };
 
 char *nicla_id;
 
@@ -73,7 +59,7 @@ BLEService eggService(SERVICE_UUID);
 BLECharacteristic dataEggCharacteristic(DATA_CHAR_ID, BLERead | BLENotify, sizeof(EggStateStruct), true);
 BLECharacteristic idEggCharacteristic(ID_CHAR_ID, BLERead | BLEWrite, (size_t) MAX_NICLA_ID_LENGTH);
 BLECharacteristic versionEggCharacteristic(VERSION_CHAR_ID, BLERead, CODE_VERSION);
-BLECharacteristic startTransferEggCharacteristic(START_TRANSFER_CHAR_ID, BLEWrite, sizeof(int), true);
+BLEByteCharacteristic startTransferEggCharacteristic(START_TRANSFER_CHAR_ID, BLERead | BLEWrite);
 BLECharacteristic floatCommandCharacteristic(FLOAT_COMMAND_CHAR_ID, BLEWrite, sizeof(FloatCommandStruct), true);
 
 // Sensor Classes
@@ -118,6 +104,40 @@ void printSettings()
   #endif
 }
 
+void print_state()
+{
+  #ifdef DEBUG_MODE
+  Serial.print("Battery: ");
+  Serial.println(state.battery);
+
+  Serial.print("qx: ");
+  Serial.println(state.qx);
+
+  Serial.print("qy: ");
+  Serial.println(state.qy);
+
+  Serial.print("qz: ");
+  Serial.println(state.qz);
+
+  Serial.print("qw: ");
+  Serial.println(state.qw);
+
+  Serial.print("Temperature: ");
+  Serial.println(state.temp);
+
+  Serial.print("Humidity: ");
+  Serial.println(state.humidity);
+
+  Serial.print("Photo1: ");
+  Serial.println(state.photo1);
+
+  Serial.print("Photo2: ");
+  Serial.println(state.photo2);
+
+  
+  #endif
+}
+
 void set_default_settings()
 {
   // Set default Settings
@@ -134,31 +154,6 @@ void set_default_settings()
   #endif
 }
 
-void write_settings()
-{
-  // Handle Settings
-  // Open with create
-  mbed::File settings_file;
-  settings_file.open(&fs, settings_filename, O_WRONLY | O_TRUNC | O_CREAT);
-
-  settings_file.write(&settings, sizeof(SettingsStruct));
-
-  settings_file.close();
-
-  // Handle Nicla ID
-  // Open with create
-  mbed::File nicla_id_file;
-  nicla_id_file.open(&fs, nicla_id_filename, O_WRONLY | O_TRUNC | O_CREAT);
-
-  // Writing string length
-  int nicla_id_length = strlen(nicla_id) + 1;
-  nicla_id_file.write(&nicla_id_length, sizeof(int));
-
-  // Writing the string
-  nicla_id_file.write(nicla_id, nicla_id_length * sizeof(char));
-
-  nicla_id_file.close();
-}
 
 void set_default_nicla_id()
 {
@@ -168,92 +163,12 @@ void set_default_nicla_id()
   strcpy(nicla_id, temp_nicla_id);
 }
 
-void initFileSystem()
-{
-  // Get core-wide instance of SPIF Block Device
-  spif = mbed::BlockDevice::get_default_instance();
-  spif->init();
+bool need_to_poll = false;
 
-  // Mount the filesystem
-  int err = fs.mount(spif);
-  if (err) {
-      err = fs.reformat(spif);
-      #ifdef DEBUG_MODE
-      Serial.print("Error mounting file system: ");
-      Serial.println(err);
-      #endif
-      while (true)
-          ;
-  }
-
-  // Checking for setting file
-  mbed::File settings_file;
-  err = settings_file.open(&fs, settings_filename, O_RDONLY);
-  if (err) {
-      #ifdef DEBUG_MODE
-      Serial.print("Error opening settings_file for reading: Probably doesnt exist");
-      Serial.println(err);
-      #endif
-
-      set_default_settings();
-  } else {
-    // Read file
-
-    // Probably works idk
-    settings_file.read(&settings, sizeof(SettingsStruct));
-
-    // Checking for errors
-    if (settings.sensor_update_period == 0)
-    {
-      printSettings();
-      set_default_settings();
-    }
-      
-  }
-
-  settings_file.close();
-
-  printSettings();
-
-  // Reading nicla id
-  // Checking for nicla_id file
-  mbed::File nicla_id_file;
-  err = nicla_id_file.open(&fs, nicla_id_filename, O_RDONLY);
-  if (err) {
-      #ifdef DEBUG_MODE
-      Serial.print("Error opening nicla_id_file for reading: Probably doesnt exist");
-      Serial.println(err);
-      #endif
-
-      set_default_nicla_id();
-  } else {
-    // Read file
-
-    // Getting String Length
-    int str_length;
-    nicla_id_file.read(&str_length, sizeof(int)); // String length shouldnt be too long
-
-    #ifdef DEBUG_MODE
-    Serial.print("Nicla ID Length: ");
-    Serial.println(str_length);
-    #endif
-
-    if (str_length == 0)
-    {
-      set_default_nicla_id(); 
-    } else {
-      nicla_id = (char*) malloc(str_length * sizeof(char));
-
-      nicla_id_file.read(nicla_id, str_length);
-    }
-  }
-
-  #ifdef DEBUG_MODE
-  Serial.print("Nicla ID: ");
-  Serial.println(nicla_id);
-  #endif
-
-  idEggCharacteristic.setValue(nicla_id);
+void transferCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
+  Serial.println("Serial Written");
+  // pollSensors();
+  need_to_poll = true;
 }
 
 void turnOnBLE()
@@ -275,91 +190,10 @@ void turnOnBLE()
   eggService.addCharacteristic(idEggCharacteristic);
   //eggService.addCharacteristic(versionEggCharacteristic);
   eggService.addCharacteristic(startTransferEggCharacteristic);
-  eggService.addCharacteristic(floatCommandCharacteristic);
+  // eggService.addCharacteristic(floatCommandCharacteristic);
 
-  idEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
-    nicla_id = (char*) (idEggCharacteristic.value());
 
-    #ifdef DEBUG_MODE
-    Serial.print("New Nicla ID: ");
-    Serial.println(nicla_id);
-    #endif
-  });
-
-  startTransferEggCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
-
-    // TODO: Make this only use one byte instead of 4
-    int value = *((int*)startTransferEggCharacteristic.value());
-
-    #ifdef DEBUG_MODE
-    Serial.print("Command Event: ");
-    Serial.println(value);
-    #endif
-
-    switch(value)
-    {
-      // Poll sensors, send data, and shutdown
-      case 1:
-        pollSensors();
-
-        #ifdef DEBUG_MODE
-        Serial.println("Finished Polling, will now shutdown");
-        #endif
-
-        needs_shutdown = true;
-        break;
-
-      // Go into a caught state to listen to setting changes and stuff
-      case 2:
-        in_caught_state = 1;
-        pollSensors();
-        break;
-
-      // Get outa caught state and shutdown
-      case 3:
-        write_settings();
-
-        #ifdef DEBUG_MODE
-        Serial.println("Got outa catch state");
-        #endif
-
-        needs_shutdown = true;
-        break;
-    }
-  });
-
-  floatCommandCharacteristic.setEventHandler(BLEWritten, [](BLEDevice central, BLECharacteristic characteristic) {
-    FloatCommand f_command = *(FloatCommand*)(floatCommandCharacteristic.value());
-
-    #ifdef DEBUG_MODE
-    Serial.print("Command ID: ");
-    Serial.println(f_command.command_id);
-    #endif
-      
-    float offset;
-    switch (f_command.command_id) 
-    {
-      // Calibrate Temperature
-      case 0:
-        offset = f_command.command_value - raw_temp;
-        settings.temperature_calibration = offset;
-        break;
-      // Calibrate Humidity
-      case 1:
-        offset = f_command.command_value - raw_humidity;
-        settings.humidity_calibration = offset;
-        break;
-      // Set Update Period
-      case 2:
-        settings.sensor_update_period = f_command.command_value;
-        break;
-      // Set orientation as up
-      case 3:
-        
-        break;
-    }
-  });
-
+  startTransferEggCharacteristic.setEventHandler(BLEWritten, transferCharacteristicWritten);
 
   // add service
 
@@ -453,7 +287,14 @@ void pollSensors()
   quaternion.end();
   humidity.end();
 
-  dataEggCharacteristic.writeValue((void*) &state, sizeof(EggStateStruct));
+  int result = dataEggCharacteristic.writeValue(&state, sizeof(EggStateStruct));
+  //int result = dataEggCharacteristic.writeValue(5);
+
+  #ifdef DEBUG_MODE
+  Serial.print("Write Result:");
+  Serial.println(result);
+  print_state();
+  #endif
 }
 
 void shutdown()
@@ -482,13 +323,8 @@ void setup() {
   Serial.println("Wokeup");
   #endif
 
-  initFileSystem();
+  // initFileSystem();
 
-  #ifdef OVERWRITE_PERIOD
-  delay((int) 5000);
-  #elif
-  delay((int) settings.sensor_update_period);
-  #endif
   
 
   turnOnBLE();
@@ -522,6 +358,13 @@ void setup() {
   // while the central is still connected to peripheral:
   while (central.connected()) {
 
+    if (need_to_poll)
+    {
+      need_to_poll = false;
+      // dataEggCharacteristic.writeValue(5);
+      pollSensors();
+    }
+
     if (time_since(millis(), BLE_START) > BLE_TIMEOUT)
     {
       #ifdef DEBUG_MODE
@@ -532,7 +375,6 @@ void setup() {
     }
 
     if (needs_shutdown) {
-      shutdown();
       unsigned long shutdown_start = millis();
       while (central.connected()) {
         if (time_since(millis(), shutdown_start) > 10000)
