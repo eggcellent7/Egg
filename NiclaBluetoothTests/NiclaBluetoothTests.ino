@@ -26,8 +26,8 @@
 
 #define BLE_TIMEOUT (20*1000)
 
-#define DEBUG_MODE
-#define OVERWRITE_PERIOD
+// #define DEBUG_MODE
+// #define OVERWRITE_PERIOD
 
 // File system stuff
 constexpr auto userRoot { "fs" }; // The name of the root of the filesystem
