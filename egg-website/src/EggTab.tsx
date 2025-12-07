@@ -4,6 +4,11 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Card,
+  CardContent,
+  Typography,
+  CircularProgress,
+  Box,
 } from "@mui/material";
 import Grid from '@mui/material/Grid';
 
@@ -96,23 +101,41 @@ function EggTab()
     };
 
     return <>
-      <Grid size={{xs:12, sm:12, md:6, lg:4}}>
-        <FormControl fullWidth>
-          <InputLabel>Select Egg</InputLabel>
-          <Select
-            value={selectedEggId}
-            label="Select Egg"
-            onChange={handleEggChange}
-          >
-            {eggs.map((eggId) => (
-              <MenuItem key={eggId} value={eggId}>
-                {eggId}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {isLoading && "Loading..."}
-      </Grid>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+            Select Egg
+          </Typography>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+              <FormControl fullWidth>
+                <InputLabel>Select Egg</InputLabel>
+                <Select
+                  value={selectedEggId}
+                  label="Select Egg"
+                  onChange={handleEggChange}
+                >
+                  {eggs.map((eggId) => (
+                    <MenuItem key={eggId} value={eggId}>
+                      {eggId}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            {isLoading && (
+              <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    Loading data...
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
       <EggView rows={groupedData[selectedEggId] || []} eggname={selectedEggId}/>
     </>
 }

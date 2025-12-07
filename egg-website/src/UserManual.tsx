@@ -4,7 +4,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
+  Box,
 } from "@mui/material";
 
 let battery_replace_str = ""
@@ -20,22 +21,54 @@ const additionl_info_str = ""
 function UserManual({manualOpen, setManualOpen}: any)
 {
     return <Dialog open={manualOpen} onClose={() => setManualOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>User Manual</DialogTitle>
-        <DialogContent dividers>
-        <Typography gutterBottom>
-            <strong>Replacing the Battery</strong>
-            <br />
-            {battery_replace_str}
-        </Typography>
-        <Typography gutterBottom>
-            <strong>Additional Info</strong>
-            <br />
-            {additionl_info_str}
-            <a href="https://docs.google.com/document/d/19CBC4rIUEdT4I1EIvMb0IMWKUA1XhVZScopWvVigAXk/edit?tab=t.0">link</a>
-        </Typography>
+        <DialogTitle sx={{ 
+          backgroundColor: "primary.main",
+          color: "white",
+          fontWeight: 600,
+        }}>
+          User Manual
+        </DialogTitle>
+        <DialogContent dividers sx={{ pt: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: "primary.dark", mb: 1 }}>
+              Replacing the Battery
+            </Typography>
+            <Typography variant="body1" sx={{ color: "text.primary", lineHeight: 1.7 }}>
+              {battery_replace_str}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: "primary.dark", mb: 1 }}>
+              Additional Info
+            </Typography>
+            <Typography variant="body1" sx={{ color: "text.primary", lineHeight: 1.7, mb: 1 }}>
+              {additionl_info_str}
+            </Typography>
+            <Button 
+              variant="outlined" 
+              href="https://docs.google.com/document/d/19CBC4rIUEdT4I1EIvMb0IMWKUA1XhVZScopWvVigAXk/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                borderColor: "primary.main",
+                color: "primary.main",
+                "&:hover": {
+                  borderColor: "primary.dark",
+                  backgroundColor: "secondary.main",
+                },
+              }}
+            >
+              View Troubleshooting Document
+            </Button>
+          </Box>
         </DialogContent>
-        <DialogActions>
-        <Button onClick={() => setManualOpen(false)}>Close</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={() => setManualOpen(false)}
+            variant="contained"
+          >
+            Close
+          </Button>
         </DialogActions>
     </Dialog>
 }

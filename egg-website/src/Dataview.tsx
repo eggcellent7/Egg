@@ -5,7 +5,11 @@ import {
   FormControl,
   InputLabel,
   Button,
-  Grid
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
 } from "@mui/material";
 
 import EggView from "./EggView";
@@ -52,17 +56,49 @@ function Dataview()
     }
 
     return <>
-        <Grid container spacing={2} alignItems="center" mb={4}>
-            <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+              Upload Data File
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{xs:12, sm:12, md:6, lg:4}}>
                 <FormControl fullWidth>
-                    <InputLabel>Input Data file (.egg)</InputLabel>
-                    <input type="file" id="myFileInput" ref={fileInputRef}
-                        accept=".egg"></input>
-                    <Button onClick={readFile}>Read</Button>
-                
-            </FormControl>
+                  <InputLabel>Input Data file (.egg)</InputLabel>
+                  <Box sx={{ mb: 2 }}>
+                    <input 
+                      type="file" 
+                      id="myFileInput" 
+                      ref={fileInputRef}
+                      accept=".egg"
+                      style={{
+                        width: "100%",
+                        padding: "8px",
+                        border: "1px solid #e0e0e0",
+                        borderRadius: "4px",
+                        fontSize: "0.875rem",
+                      }}
+                    />
+                  </Box>
+                  <Button 
+                    onClick={readFile}
+                    variant="contained"
+                    fullWidth
+                  >
+                    Read File
+                  </Button>
+                </FormControl>
+              </Grid>
+              {fileName && (
+                <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    Loaded: <strong>{fileName}</strong>
+                  </Typography>
+                </Grid>
+              )}
             </Grid>
-        </Grid>
+          </CardContent>
+        </Card>
         <EggView rows={rows} eggname={fileName}/>
     </>
 }

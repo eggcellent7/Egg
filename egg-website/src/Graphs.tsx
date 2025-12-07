@@ -5,19 +5,19 @@ import {
   Typography,
   Box,
   Dialog,
-  IconButton
+  IconButton,
+  Card,
+  CardContent,
 } from "@mui/material";
 import Grid from '@mui/material/Grid';
 
 const fieldNames = ["qx", "qy", "qz", "qw", "Temperature", "Humidity", "Light1", "Light2", "Voltage"];
-const graphedFields = fieldNames.slice(4);
+const graphedFields = fieldNames.slice(4).filter(field => field !== "Light1" && field !== "Light2");
 
 // Define units for each field
 const fieldUnits: Record<string, string> = {
   "Temperature": "°C",
   "Humidity": "%",
-  "Light1": "lux",
-  "Light2": "lux",
   "Voltage": "V"
 };
 
@@ -87,31 +87,60 @@ function Graphs({expandedField, setExpandedField, filteredRows}: {[key: string]:
 
         return (
             <Grid size={{xs: 12, sm: 6, lg: 4}} key={field}>
-            <Typography variant="subtitle1" gutterBottom>{field}</Typography>
-            <Box sx={{ width: "100%", overflowX: "auto" }}>
-                <LineChart
-                width={Math.min(300, window.innerWidth - 40)}
-                height={130}
-                xAxis={[
-                    {
-                    dataKey: 'timestamp',
-                    scaleType: 'time',
-                    valueFormatter: (val: any) => formatForGraph(val.getTime()),
-                    tickLabelStyle: { display: "none" },
-                    label: "Time",
-                    }
-                ]}
-                yAxis={[
-                    {
-                    label: unit,
-                    labelStyle: { textAnchor: "middle" },
-                    }
-                ]}
-                dataset={chartData}
-                series={[{ dataKey: 'value', label: field, showMark: false }]}
-                onClick={() => setExpandedField(field)}
-                />
-            </Box>
+            <Card 
+              sx={{ 
+                height: "100%",
+                cursor: "pointer",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  boxShadow: "0 4px 12px rgba(25, 118, 210, 0.15)",
+                  transform: "translateY(-2px)",
+                },
+              }}
+              onClick={() => setExpandedField(field)}
+            >
+              <CardContent>
+                <Typography 
+                  variant="subtitle1" 
+                  gutterBottom
+                  sx={{ 
+                    fontWeight: 600,
+                    color: "primary.dark",
+                    mb: 1,
+                  }}
+                >
+                  {field}
+                </Typography>
+                <Box sx={{ width: "100%", overflowX: "auto" }}>
+                    <LineChart
+                    width={Math.min(300, window.innerWidth - 40)}
+                    height={130}
+                    xAxis={[
+                        {
+                        dataKey: 'timestamp',
+                        scaleType: 'time',
+                        valueFormatter: (val: any) => formatForGraph(val.getTime()),
+                        tickLabelStyle: { display: "none" },
+                        label: "Time",
+                        }
+                    ]}
+                    yAxis={[
+                        {
+                        label: unit,
+                        labelStyle: { textAnchor: "middle" },
+                        }
+                    ]}
+                    dataset={chartData}
+                    series={[{ 
+                      dataKey: 'value', 
+                      label: field, 
+                      showMark: false,
+                      color: "#1976d2",
+                    }]}
+                    />
+                </Box>
+              </CardContent>
+            </Card>
             </Grid>
         );
         })}
@@ -119,16 +148,35 @@ function Graphs({expandedField, setExpandedField, filteredRows}: {[key: string]:
 
     {/* Expanded Chart Modal */}
     <Dialog open={Boolean(expandedField)} onClose={() => setExpandedField(null)} maxWidth="md" fullWidth>
-        <Box sx={{ position: "relative", p: 2 }}>
+        <Box sx={{ position: "relative", p: 3 }}>
         <IconButton
             onClick={() => setExpandedField(null)}
-            sx={{ position: "absolute", right: 8, top: 8 }}
+            sx={{ 
+              position: "absolute", 
+              right: 8, 
+              top: 8,
+              color: "text.secondary",
+              "&:hover": {
+                backgroundColor: "secondary.main",
+                color: "primary.main",
+              },
+            }}
         >
             <CloseIcon />
         </IconButton>
         {expandedField && (
             <>
-            <Typography variant="h6" gutterBottom>{expandedField}</Typography>
+            <Typography 
+              variant="h6" 
+              gutterBottom
+              sx={{ 
+                fontWeight: 600,
+                color: "primary.dark",
+                mb: 2,
+              }}
+            >
+              {expandedField}
+            </Typography>
             {(() => {
                 const fieldIndex = fieldNames.indexOf(expandedField);
                 const chartData = createChartDataWithGaps(filteredRows, fieldIndex);
@@ -164,6 +212,7 @@ function Graphs({expandedField, setExpandedField, filteredRows}: {[key: string]:
                         dataKey: 'value',
                         label: expandedField,
                         showMark: false,
+                        color: "#1976d2",
                     }
                     ]}
                 />

@@ -26,7 +26,7 @@
 
 #define BLE_TIMEOUT (20*1000)
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
 // #define OVERWRITE_PERIOD
 
 // File system stuff
@@ -486,7 +486,7 @@ void setup() {
 
   #ifdef OVERWRITE_PERIOD
   delay((int) 5000);
-  #elif
+  #else
   delay((int) settings.sensor_update_period);
   #endif
   

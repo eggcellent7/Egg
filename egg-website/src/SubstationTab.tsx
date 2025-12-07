@@ -5,7 +5,6 @@ import { collection, getDocs } from "firebase/firestore";
 import { decodeBase64SensorChunk } from "./utils/base64Decoder";
 
 import {
-  Box,
   FormControl,
   InputLabel,
   MenuItem,
@@ -14,6 +13,9 @@ import {
   Button,
   Switch,
   FormControlLabel,
+  Card,
+  CardContent,
+  Typography,
 } from "@mui/material";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -21,9 +23,9 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
+// import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
-import { CheckBox } from "@mui/icons-material";
+// import { CheckBox } from "@mui/icons-material";
 
 const substation_col_id = "substations"
 
@@ -231,182 +233,284 @@ function SubstationTab()
 
     return <>
         {/* Controls */}
-        <Grid container spacing={2} alignItems="center" mb={4}>
-            <Grid size={{xs:12, sm:12, md:6, lg:4}}>
-            <FormControl fullWidth>
-                <InputLabel>Select Substation</InputLabel>
-                <Select
-                value={selectedStation}
-                label="Select Substation"
-                onChange={(e: any) => {
-                    setSelectedStation(e?.target?.value);
-                }}
-                MenuProps={{
-                    disablePortal: true,
-                    PaperProps: {
-                    style: {
-                        maxHeight: 300,
-                    },
-                },
-            }}
-                >
-                {Object.keys(substations).map((id) => (
-                    <MenuItem key={id} value={id}>
-                    {id}
-                    </MenuItem>
-                ))}
-                </Select>
-            </FormControl>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+              Select Substation
+            </Typography>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+                <FormControl fullWidth>
+                  <InputLabel>Select Substation</InputLabel>
+                  <Select
+                    value={selectedStation}
+                    label="Select Substation"
+                    onChange={(e: any) => {
+                      setSelectedStation(e?.target?.value);
+                    }}
+                    MenuProps={{
+                      disablePortal: true,
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                        },
+                      },
+                    }}
+                  >
+                    {Object.keys(substations).map((id) => (
+                      <MenuItem key={id} value={id}>
+                        {id}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
             </Grid>
-        </Grid>
+          </CardContent>
+        </Card>
 
-        {selectedStation && substations[selectedStation] && <Grid container spacing={2} alignItems="center" mb={4}>
-            <Box mb={2}>
-                <Box mb={2}>
-                    <InputLabel>IP Address</InputLabel>
-                    <div>{substations[selectedStation].ip_address} </div>
-                </Box>
+        {selectedStation && substations[selectedStation] && (
+          <>
+            {/* Substation Info Card */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                  Substation Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{xs: 12, sm: 6, md: 4}}>
+                    <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 0.5 }}>
+                      IP Address
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      {substations[selectedStation].ip_address || "N/A"}
+                    </Typography>
+                  </Grid>
+                  <Grid size={{xs: 12, sm: 6, md: 4}}>
+                    <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 0.5 }}>
+                      Ngrok Endpoint
+                    </Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      {substations[selectedStation].ngrok_endpoint || "N/A"}
+                    </Typography>
+                  </Grid>
+                  {pingData && (
+                    <Grid size={{xs: 12, sm: 6, md: 4}}>
+                      <Typography variant="subtitle2" sx={{ color: "text.secondary", mb: 0.5 }}>
+                        Device Time
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {parseDeviceTime(""+pingData.datetime)}
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </CardContent>
+            </Card>
 
-                <Box mb={2}>
-                    <InputLabel>Ngrok Endpoint</InputLabel> 
-                    <div>{substations[selectedStation].ngrok_endpoint }</div>
-                </Box>
-
-                {pingData && <Box mb={2}>
-                    <InputLabel>Device Time</InputLabel> 
-                    <div>{parseDeviceTime(""+pingData.datetime)}</div>
-                </Box>}
-
-                <TableContainer component={Paper}>
-                    <Table sx={{ minWidth: 650 }} aria-label="simple table">
-                        <TableHead>
-                        <TableRow>
-                            <TableCell>Eggs ID</TableCell>
-                            <TableCell align="right">Address</TableCell>
-                            <TableCell align="right">Last timestamp</TableCell>
-                            <TableCell align="right">Temperature (c)</TableCell>
-                            <TableCell align="right">Humidity (%)</TableCell>
-                            <TableCell align="right">Light 1</TableCell>
-                            <TableCell align="right">Light 2</TableCell>
-                            <TableCell align="right">Voltage (V)</TableCell>
-                        </TableRow>
-                        </TableHead>
-                        <TableBody>
-                        {
+            {/* Eggs Table Card */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                  Connected Eggs
+                </Typography>
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }} aria-label="eggs table">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "secondary.main" }}>
+                        <TableCell sx={{ fontWeight: 600 }}>Egg ID</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Address</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Last Timestamp</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Temperature (°C)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Humidity (%)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>Voltage (V)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {
                         Object.keys(pingData?.eggs || {}).map((address) => (
-                            <TableRow
+                          <TableRow
                             key={address}
-                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
                             onClick={(_) => selectedEgg == address ? setSelectedEgg(undefined):setSelectedEgg(address)}
                             selected={address == selectedEgg}
-                            style={{cursor: "pointer"}}
-                            >
-                            <TableCell component="th" scope="row">
-                                {pingData?.eggs[address].nicla_id}
+                            sx={{ 
+                              cursor: "pointer",
+                              '&:last-child td, &:last-child th': { border: 0 },
+                              '&:hover': {
+                                backgroundColor: "secondary.main",
+                              },
+                              backgroundColor: address == selectedEgg ? "secondary.light" : "transparent",
+                            }}
+                          >
+                            <TableCell component="th" scope="row" sx={{ fontWeight: address == selectedEgg ? 600 : 400 }}>
+                              {pingData?.eggs[address].nicla_id}
                             </TableCell>
                             <TableCell align="right">{address}</TableCell>
                             <TableCell align="right">{parseDeviceTime(rows[address][0])}</TableCell>
                             <TableCell align="right">{rows[address][5]}</TableCell>
                             <TableCell align="right">{rows[address][6]}</TableCell>
-                            <TableCell align="right">{rows[address][7]}</TableCell>
-                            <TableCell align="right">{rows[address][8]}</TableCell>
                             <TableCell align="right">{rows[address][9]}</TableCell>
-                            </TableRow>
+                          </TableRow>
                         ))
-                        }
-                        </TableBody>
-                    </Table>
+                      }
+                    </TableBody>
+                  </Table>
                 </TableContainer>
+              </CardContent>
+            </Card>
 
-                <br/>
+            {/* Egg Configuration Card */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                {!selectedEgg ? (
+                  <Typography variant="body1" sx={{ color: "text.secondary", textAlign: "center", py: 2 }}>
+                    Select an egg from the table above to configure
+                  </Typography>
+                ) : (
+                  <>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                      Configure Egg: {pingData?.eggs[selectedEgg]?.nicla_id}
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{xs: 12, sm: 6}}>
+                        <TextField 
+                          id="egg-id" 
+                          label="Egg ID" 
+                          variant="outlined" 
+                          fullWidth
+                          value={eggId} 
+                          onChange={(e) => setEggId(e.target.value)}
+                        />
+                      </Grid>
+                      <Grid size={{xs: 12, sm: 6}}>
+                        <TextField 
+                          id="temp-calibration" 
+                          label="Temperature Calibration (°C)" 
+                          variant="outlined" 
+                          fullWidth
+                          value={tempCalibration} 
+                          onChange={(e) => {
+                            if (e.target.value == "") {
+                              setTempCalibration("");
+                            } else {
+                              if (isNaN(parseFloat(e.target.value)))
+                                return
+                              setTempCalibration(e.target.value);
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid size={{xs: 12, sm: 6}}>
+                        <TextField 
+                          id="hum-calibration" 
+                          label="Humidity Calibration (%)" 
+                          variant="outlined" 
+                          fullWidth
+                          value={humCalibration} 
+                          onChange={(e) => {
+                            if (e.target.value == "") {
+                              setHumCalibration("");
+                            } else {
+                              if (isNaN(parseFloat(e.target.value)))
+                                return
+                              setHumCalibration(e.target.value);
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid size={{xs: 12, sm: 6}}>
+                        <TextField 
+                          id="polling-speed" 
+                          label="Polling Speed (s)" 
+                          variant="outlined" 
+                          fullWidth
+                          value={pollingSpeed} 
+                          onChange={(e) => {
+                            if (e.target.value == "") {
+                              setPollingSpeed("");
+                            } else {
+                              if (isNaN(parseFloat(e.target.value)))
+                                return
+                              setPollingSpeed(e.target.value);
+                            }
+                          }}
+                        />
+                      </Grid>
+                      <Grid size={{xs: 12}}>
+                        <FormControlLabel 
+                          control={
+                            <Switch 
+                              checked={calibrateOrientation} 
+                              onChange={(e: any) => setCalibrateOrientation(e.target.checked)} 
+                              inputProps={{ 'aria-label': 'calibrate orientation' }}
+                            />
+                          } 
+                          label="Calibrate Orientation" 
+                        />
+                      </Grid>
+                      <Grid size={{xs: 12}}>
+                        <Button 
+                          variant="contained" 
+                          onClick={applyChanges}
+                          sx={{ mt: 1 }}
+                        >
+                          Apply Changes
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-                <Box mb={2}>
-                    {!selectedEgg && "Select an egg"}
-                    {selectedEgg && <FormControl fullWidth>
-                        Selected Egg "{pingData?.eggs[selectedEgg]?.nicla_id}"
-                        <br/>
-                        <TextField id="outlined-basic" label="Egg ID" variant="outlined" 
-                            value={eggId} onChange={(e) => setEggId(e.target.value)}/>
-                        
-                        <br/>
-                        <TextField id="outlined-basic" label="Temperature Calibration (C)" variant="outlined" 
-                            value={tempCalibration} onChange={(e) => {
-                                if (e.target.value == "") {
-                                    setTempCalibration("");
-                                } else {
-                                    if (isNaN(parseFloat(e.target.value)))
-                                        return
-                                    setTempCalibration(e.target.value);
-                                }
-                            }}/>
-
-                        {/* <FormControlLabel control={<CheckBox defaultChecked />} label="Label" /> */}
-
-                        <br/>
-                        <TextField id="outlined-basic" label="Humidity Calibration (%)" variant="outlined" 
-                            value={humCalibration} onChange={(e) => {
-                                if (e.target.value == "") {
-                                    setHumCalibration("");
-                                } else {
-                                    if (isNaN(parseFloat(e.target.value)))
-                                        return
-                                    setHumCalibration(e.target.value);
-                                }
-                            }}/>
-
-                        <br/>
-                        <TextField id="outlined-basic" label="Polling Speed (s)" variant="outlined" 
-                            value={pollingSpeed} onChange={(e) => {
-                                if (e.target.value == "") {
-                                    setPollingSpeed("");
-                                } else {
-                                    if (isNaN(parseFloat(e.target.value)))
-                                        return
-                                    setPollingSpeed(e.target.value);
-                                }
-                            }}/>
-
-                        <FormControlLabel control={<Switch 
-                            checked={calibrateOrientation} 
-                            onChange={(e: any) => setCalibrateOrientation(e.target.checked)} 
-                            inputProps={{ 'aria-label': 'controlled' }}
-                            />} label="Calibrate Orientation" />
-
-                        <Button variant="outlined" onClick={applyChanges}>Apply Changes</Button>
-                    </FormControl>}
-                </Box>
-
-                <Grid container spacing={2} alignItems="center" mb={4}>
-            <Grid size={{xs:12, sm:12, md:6, lg:4}}>
-            <FormControl fullWidth>
-                <InputLabel>Download Saved Data</InputLabel>
-                <Select
-                value={selectedFile}
-                label="Select Data file"
-                onChange={(e: any) => {
-                    setSelectedFile(e?.target?.value);
-                }}
-                MenuProps={{
-                    disablePortal: true,
-                    PaperProps: {
-                    style: {
-                        maxHeight: 300,
-                    },
-                },
-            }}
-                >
-                {pingData && (pingData.saved || []).map((id) => (
-                    <MenuItem key={id} value={id}>
-                    {id}
-                    </MenuItem>
-                ))}
-                </Select>
-                <Button onClick={DownloadSavedData} variant="outlined">Download</Button>
-            </FormControl>
-            </Grid>
-        </Grid>
-            </Box>
-        </Grid>}
+            {/* Download Saved Data Card */}
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                  Download Saved Data
+                </Typography>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+                    <FormControl fullWidth>
+                      <InputLabel>Select Data File</InputLabel>
+                      <Select
+                        value={selectedFile}
+                        label="Select Data File"
+                        onChange={(e: any) => {
+                          setSelectedFile(e?.target?.value);
+                        }}
+                        MenuProps={{
+                          disablePortal: true,
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                            },
+                          },
+                        }}
+                      >
+                        {pingData && (pingData.saved || []).map((id) => (
+                          <MenuItem key={id} value={id}>
+                            {id}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid size={{xs:12, sm:12, md:6, lg:4}}>
+                    <Button 
+                      onClick={DownloadSavedData} 
+                      variant="contained"
+                      disabled={!selectedFile || selectedFile === ""}
+                      fullWidth
+                    >
+                      Download
+                    </Button>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </>
+        )}
     
     </>
 }

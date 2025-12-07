@@ -10,6 +10,8 @@ import {
   Button,
   Slider,
   Chip,
+  Card,
+  CardContent,
 } from "@mui/material";
 import Grid from '@mui/material/Grid';
 import CloseIcon from "@mui/icons-material/Close";
@@ -262,120 +264,161 @@ function EggView({rows, eggname}: {rows: any[], eggname: string})
       };
 
     return <>
-            {/* Controls */}
-            <Grid container spacing={2} alignItems="center" mb={4}>
-              
-              <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
-                <TextField
-                  label="Start Date"
-                  type="datetime-local"
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  value={startDate}
-                  onChange={(e) => handleMainDateChange('start', e.target.value)}
-                />
-              </Grid>
-              <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
-                <TextField
-                  label="End Date"
-                  type="datetime-local"
-                  fullWidth
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  value={endDate}
-                  onChange={(e) => handleMainDateChange('end', e.target.value)}
-                />
-              </Grid>
-              <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={downloadCSV}
-                  disabled={filteredRows.length === 0}
-                  sx={{ height: { xs: "48px", sm: "56px" } }}
-                >
-                  Download CSV
-                </Button>
-              </Grid>
-              <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={openAnimationDialog}
-                  disabled={!eggname || rows.length === 0}
-                  sx={{ height: { xs: "48px", sm: "56px" } }}
-                >
-                  View Animation
-                </Button>
-              </Grid>
-            </Grid>
+            {/* Controls Card */}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                  Data Controls
+                </Typography>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
+                    <TextField
+                      label="Start Date"
+                      type="datetime-local"
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      value={startDate}
+                      onChange={(e) => handleMainDateChange('start', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid size={{xs: 12, sm: 6, md:3, lg:2}}>
+                    <TextField
+                      label="End Date"
+                      type="datetime-local"
+                      fullWidth
+                      size="small"
+                      InputLabelProps={{ shrink: true }}
+                      value={endDate}
+                      onChange={(e) => handleMainDateChange('end', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={downloadCSV}
+                      disabled={filteredRows.length === 0}
+                      sx={{ height: { xs: "48px", sm: "56px" } }}
+                    >
+                      Download CSV
+                    </Button>
+                  </Grid>
+                  <Grid size={{xs: 12, sm: 6, md:6, lg:2}}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={openAnimationDialog}
+                      disabled={!eggname || rows.length === 0}
+                      sx={{ height: { xs: "48px", sm: "56px" } }}
+                    >
+                      View Animation
+                    </Button>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
     
             {/* Date Range Presets */}
-            <Box mb={4}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
-                <Typography variant="subtitle1">
-                  Quick Date Ranges:
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={clearAllFilters}
-                  disabled={!startDate && !endDate && !selectedMainPreset}
-                >
-                  Clear Filters
-                </Button>
-              </Box>
-              <Box display="flex" flexWrap="wrap" gap={1}>
-                {datePresets.map((preset) => (
-                  <Chip
-                    key={preset.label}
-                    label={preset.label}
-                    onClick={() => handleMainPresetClick(preset)}
-                    variant={selectedMainPreset === preset.label ? "filled" : "outlined"}
-                    color={selectedMainPreset === preset.label ? "primary" : "default"}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={1}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                    Quick Date Ranges:
+                  </Typography>
+                  <Button
+                    variant="outlined"
                     size="small"
-                    sx={{ cursor: "pointer" }}
-                  />
-                ))}
-              </Box>
-            </Box>
+                    onClick={clearAllFilters}
+                    disabled={!startDate && !endDate && !selectedMainPreset}
+                    sx={{
+                      borderColor: "primary.main",
+                      color: "primary.main",
+                      "&:hover": {
+                        borderColor: "primary.dark",
+                        backgroundColor: "secondary.main",
+                      },
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </Box>
+                <Box display="flex" flexWrap="wrap" gap={1}>
+                  {datePresets.map((preset) => (
+                    <Chip
+                      key={preset.label}
+                      label={preset.label}
+                      onClick={() => handleMainPresetClick(preset)}
+                      variant={selectedMainPreset === preset.label ? "filled" : "outlined"}
+                      color={selectedMainPreset === preset.label ? "primary" : "default"}
+                      size="small"
+                      sx={{ 
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: selectedMainPreset === preset.label ? undefined : "secondary.main",
+                        },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
     
             {/* Top section with static egg model */}
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                gap: 4,
-                mb: 5,
-                flexWrap: "wrap",
-              }}
-            >
-              <Box
-                sx={{
-                  width: { xs: "100%", sm: "90%", md: 500 },
-                  height: { xs: 250, sm: 300 },
-                  maxWidth: 500,
-                  background: "#e0e0e0",
-                  borderRadius: 2,
-                  flexShrink: 0,
-                }}
-              >
-                <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
-                  <ambientLight />
-                  <directionalLight position={[3, 3, 3]} />
-                  <EggModel quaternion={latestQuaternion} />
-                </Canvas>
-              </Box>
-            </Box>
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: "primary.dark" }}>
+                  Current Orientation
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: 4,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: { xs: "100%", sm: "90%", md: 500 },
+                      height: { xs: 250, sm: 300 },
+                      maxWidth: 500,
+                      background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                      borderRadius: 2,
+                      flexShrink: 0,
+                      border: "1px solid",
+                      borderColor: "divider",
+                    }}
+                  >
+                    <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
+                      <ambientLight />
+                      <directionalLight position={[3, 3, 3]} />
+                      <EggModel quaternion={latestQuaternion} />
+                    </Canvas>
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
     
             {/* Graphs */}
-            <Graphs expandedField={expandedField} setExpandedField={setExpandedField} filteredRows={filteredRows}/>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3, fontWeight: 600, color: "primary.dark" }}>
+                  Sensor Data
+                </Typography>
+                <Graphs expandedField={expandedField} setExpandedField={setExpandedField} filteredRows={filteredRows}/>
+              </CardContent>
+            </Card>
             
     
             {/* Animation Dialog */}
             <Dialog open={animationOpen} onClose={closeAnimationDialog} maxWidth="lg" fullWidth>
-              <DialogTitle>
+              <DialogTitle sx={{ 
+                backgroundColor: "primary.main",
+                color: "white",
+                fontWeight: 600,
+                pb: 2,
+              }}>
                 Animation Playback
                 <IconButton
                   aria-label="close"
@@ -384,12 +427,16 @@ function EggView({rows, eggname}: {rows: any[], eggname: string})
                     position: "absolute",
                     right: 8,
                     top: 8,
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    },
                   }}
                 >
                   <CloseIcon />
                 </IconButton>
               </DialogTitle>
-              <DialogContent sx={{ px: { xs: 1, sm: 3 } }}>
+              <DialogContent sx={{ px: { xs: 2, sm: 3 }, pt: 3 }}>
                 {/* Date Range Presets */}
                 <Box mb={3}>
                   <Typography variant="subtitle2" gutterBottom>
@@ -442,9 +489,11 @@ function EggView({rows, eggname}: {rows: any[], eggname: string})
                   sx={{
                     width: "100%",
                     height: { xs: 250, sm: 300 },
-                    background: "#e0e0e0",
+                    background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
                     borderRadius: 2,
                     mb: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
                   }}
                 >
                   <Canvas camera={{ position: [0, 0, 25], fov: 45 }}>
